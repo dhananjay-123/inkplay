@@ -32,6 +32,7 @@ export function RulesPlayground() {
   const bodyRef = useRef<SVGGElement>(null);
   const lightRef = useRef<SVGCircleElement>(null);
   const splatRef = useRef<SVGGElement>(null);
+  const figRef = useRef<HTMLElement>(null);
   const rulesRef = useRef(on);
   useEffect(() => {
     rulesRef.current = on;
@@ -104,12 +105,37 @@ export function RulesPlayground() {
         }
       }
       place();
-      raf = requestAnimationFrame(step);
+      raf = running ? requestAnimationFrame(step) : 0;
     };
 
+    // Only animate while on screen and the tab is visible.
+    let running = false;
+    let onScreen = false;
+    const sync = () => {
+      const want = onScreen && !document.hidden && !reduced;
+      if (want && !running) {
+        running = true;
+        last = performance.now();
+        raf = requestAnimationFrame(step);
+      } else if (!want && running) {
+        running = false;
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
+    };
+    const io = new IntersectionObserver(([e]) => {
+      onScreen = Boolean(e?.isIntersecting);
+      sync();
+    });
+    if (figRef.current) io.observe(figRef.current);
+    document.addEventListener('visibilitychange', sync);
+
     place();
-    if (!reduced) raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      io.disconnect();
+      document.removeEventListener('visibilitychange', sync);
+      cancelAnimationFrame(raf);
+    };
   }, []);
 
   const toggle = (id: RuleId) =>
@@ -160,7 +186,7 @@ export function RulesPlayground() {
         </div>
       </div>
 
-      <figure className="relative">
+      <figure ref={figRef} className="relative">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full overflow-hidden rounded-sm bg-[#FFF7E6] shadow-[var(--shadow)] ring-1 ring-ink/10" role="img" aria-label="A tiny level: the hero runs, jumps a cloud and spikes. Active rules change how it moves.">
           <defs>
             <radialGradient id="rp-torch">

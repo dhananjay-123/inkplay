@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -81,6 +81,12 @@ function ActiveNav() {
   return <NavItems path={usePathname()} />;
 }
 
+/** Inside a Link: wiggles the icon from the moment it's clicked until the page arrives. */
+function Pending({ children }: { children: React.ReactNode }) {
+  const { pending } = useLinkStatus();
+  return <span className={`inline-flex ${pending ? 'nav-pending' : ''}`}>{children}</span>;
+}
+
 function NavItems({ path }: { path: string | null }) {
   const active = (href: string) => path !== null && (path === href || path.startsWith(`${href}/`));
   return (
@@ -98,7 +104,7 @@ function NavItems({ path }: { path: string | null }) {
                   on ? 'bg-accent text-accent-ink' : 'text-graphite hover:bg-paper-deep hover:text-ink'
                 }`}
               >
-                {l.icon}
+                <Pending>{l.icon}</Pending>
                 <span className="hidden md:inline">{l.label}</span>
               </Link>
             </li>
@@ -106,7 +112,7 @@ function NavItems({ path }: { path: string | null }) {
         })}
       </ul>
       <Link href="/create" aria-current={active('/create') ? 'page' : undefined} className="btn-game label px-3 py-2 sm:px-4">
-        {PencilIcon}
+        <Pending>{PencilIcon}</Pending>
         <span className="hidden sm:inline">Create</span>
       </Link>
     </nav>

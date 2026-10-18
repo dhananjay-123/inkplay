@@ -402,6 +402,7 @@ function findMarks(cv: CV, mask: CVTypes.Mat, keep: Keep): Mark[] {
       area: r.area / (OUT_W * OUT_H),
       aspect: wPx / hPx,
       polyline: topProfile(labels, ink, r),
+      zigzag: isZigzagInk(labels, ink, r),
     };
   });
 }
@@ -555,6 +556,52 @@ function topProfile(labels: Int32Array, ink: Uint8Array, r: RawMark): [number, n
 }
 
 const round4 = (v: number) => Math.round(v * 10000) / 10000;
+
+/**
+ * Full-resolution check (the polyline is too coarse: teeth alias away).
+ * Walk the top edge every 3 px; count swings that cover ≥60% of the mark's
+ * height. Spikes swing many times; words, cacti and trampolines don't.
+ */
+function isZigzagInk(labels: Int32Array, ink: Uint8Array, r: RawMark): boolean {
+  const wPx = r.x1 - r.x0 + 1;
+  const hPx = r.y1 - r.y0 + 1;
+  if (wPx < hPx * 1.2 || hPx < 12) return false;
+  const min = hPx * 0.6;
+  let swings = 0;
+  let dir = 0;
+  let extreme = -1;
+  for (let x = r.x0; x <= r.x1; x += 3) {
+    let top = -1;
+    for (let y = r.y0; y <= r.y1; y++) {
+      const p = y * OUT_W + x;
+      if (labels[p] === r.label && ink[p]) {
+        top = y;
+        break;
+      }
+    }
+    if (top < 0) continue;
+    if (extreme < 0) {
+      extreme = top;
+      continue;
+    }
+    const d = top - extreme;
+    if (dir === 0 || Math.sign(d) === dir) {
+      // still moving the same way (or undecided): extend the extreme
+      if (dir === 0 ? Math.abs(d) >= min : (dir > 0 ? top > extreme : top < extreme)) {
+        if (dir === 0) {
+          dir = Math.sign(d);
+          swings++;
+        }
+        extreme = top;
+      }
+    } else if (Math.abs(d) >= min) {
+      dir = -dir;
+      swings++;
+      extreme = top;
+    }
+  }
+  return swings >= 4;
+}
 
 /* ---------------- set-of-marks ---------------- */
 

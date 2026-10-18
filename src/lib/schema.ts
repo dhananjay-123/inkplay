@@ -17,6 +17,8 @@ export const MarkSchema = z.object({
   aspect: z.number().min(0),
   /** Simplified main stroke, normalized 0–1 points. */
   polyline: z.array(z.tuple([z.number(), z.number()])).max(64),
+  /** Measured by the vision step: the top edge swings fully up and down ≥3 times. */
+  zigzag: z.boolean().optional(),
 });
 export type Mark = z.infer<typeof MarkSchema>;
 
@@ -188,7 +190,24 @@ export function reconcileLabels(level: Level, marks: Mark[]): Level {
   const byId = new Map<number, MarkLabel>();
   for (const l of level.labels) if (ids.has(l.id) && !byId.has(l.id)) byId.set(l.id, l);
   for (const m of marks) if (!byId.has(m.id)) byId.set(m.id, { id: m.id, what: 'mystery doodle', role: 'decoration' });
+  for (const m of marks) {
+    const l = byId.get(m.id)!;
+    if (looksLikeMisreadTrampoline(l, m)) byId.set(m.id, { ...l, what: 'trampoline', role: 'bouncy' });
+  }
   return { ...level, labels: [...byId.values()].sort((a, b) => a.id - b.id) };
+}
+
+/**
+ * Measurements over guesses: the model sometimes calls a hatched trampoline
+ * "spikes". If the vision step measured the mark as NOT a zigzag and its top
+ * edge is a nearly flat bar (wider than tall), it's a bar on legs: bouncy.
+ * A single big triangle spike has a peaked top and stays a hazard.
+ */
+function looksLikeMisreadTrampoline(l: MarkLabel, m: Mark): boolean {
+  if (l.role !== 'hazard' || !/spik|zig|pit|thorn/i.test(l.what)) return false;
+  if (m.zigzag !== false || m.aspect < 1.5 || m.polyline.length < 3 || m.bbox.h <= 0) return false;
+  const ys = m.polyline.map(([, y]) => y);
+  return (Math.max(...ys) - Math.min(...ys)) / m.bbox.h < 0.45;
 }
 
 /* ---------- Review ---------- */

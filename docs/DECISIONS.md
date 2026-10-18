@@ -88,3 +88,14 @@ decision, why.
   below/sides); sloped strokes become 6 px steps.
 - **Why:** sketchy lines overlap and wobble; one-way surfaces never trap the
   hero.
+
+### D12 — Measured shape facts beat prompt wording (zigzag vs trampoline)
+- **Context:** the hatched trampoline (sample 02) read as "spikes", and a
+  prompt tweak to fix it flipped sample 01's real spikes to "spring".
+- **Decision:** the vision step measures each mark's top edge at full
+  resolution; ≥4 swings of ≥60% of its height = `zigzag: true`, which the
+  prompt lists next to the mark ("zigzag: sharp points up and down"). On the
+  server, a mark labelled spikes that was measured *not* zigzag and has a
+  flat-bar top becomes a trampoline (bouncy).
+- **Why:** deterministic, explainable, and it fixed both directions:
+  spikes 3/3 on samples 01/04/05, trampoline 3/3 on sample 02.

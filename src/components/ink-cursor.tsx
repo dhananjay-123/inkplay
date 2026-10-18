@@ -30,12 +30,13 @@ export function InkCursor() {
     let y = -100;
     let visible = false;
     let raf = 0;
-    let dpr = 1;
+    let dirty = false; // something is on the trail canvas
+    let state = 'idle';
 
+    // 1x is plenty for a soft trail and keeps each clear cheap.
     const resize = () => {
-      dpr = Math.min(2, window.devicePixelRatio || 1);
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     };
     resize();
 
@@ -55,8 +56,9 @@ export function InkCursor() {
       }
       if (!reduced) pts.push({ x, y, t: performance.now() });
       const el = e.target instanceof Element ? e.target : null;
-      const texty = Boolean(el?.closest(TEXTY));
-      nib.dataset.state = texty ? 'hidden' : el?.closest(INTERACTIVE) ? 'cta' : 'idle';
+      const next = el?.closest(TEXTY) ? 'hidden' : el?.closest(INTERACTIVE) ? 'cta' : 'idle';
+      if (next !== state) nib.dataset.state = state = next; // touch the DOM only on change
+      wake();
     };
     const onLeave = () => {
       visible = false;
@@ -65,13 +67,15 @@ export function InkCursor() {
     const onDown = () => nib.classList.add('ink-cursor-down');
     const onUp = () => nib.classList.remove('ink-cursor-down');
 
+    // Runs only while the pointer moves or the trail is still fading; idle = zero work.
     const frame = () => {
+      raf = 0;
       nib.style.transform = `translate3d(${x}px, ${y}px, 0)`;
       if (!reduced) {
         const now = performance.now();
         while (pts.length && now - pts[0].t > TRAIL_MS) pts.shift();
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (dirty) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        dirty = pts.length > 1;
         ctx.lineCap = 'round';
         ctx.strokeStyle = ink;
         for (let i = 1; i < pts.length; i++) {
@@ -84,10 +88,12 @@ export function InkCursor() {
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
+        if (pts.length) wake();
       }
-      raf = requestAnimationFrame(frame);
     };
-    raf = requestAnimationFrame(frame);
+    function wake() {
+      if (!raf) raf = requestAnimationFrame(frame);
+    }
 
     window.addEventListener('pointermove', onMove, { passive: true });
     window.addEventListener('pointerdown', onDown);

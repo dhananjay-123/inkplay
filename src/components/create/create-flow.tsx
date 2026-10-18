@@ -44,6 +44,20 @@ export function CreateFlow() {
 
   useEffect(() => warmupVision(), []);
 
+  // The game engine is ~315 KB gzipped and was fetched only after "Play it":
+  // on a real network that read as a dead click. Pull it in while idle here.
+  useEffect(() => {
+    const warm = () => void Promise.all([import('phaser'), import('@/game/LevelScene')]).catch(() => {});
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(warm);
+    else setTimeout(warm, 1500);
+  }, []);
+
+  // Once Gemma has answered, the play route is the only place left to go.
+  useEffect(() => {
+    if (phase.kind === 'ready') router.prefetch(phase.result.id ? `/play/${phase.result.id}` : '/play');
+  }, [phase, router]);
+
   useEffect(() => {
     if (!busy) return;
     const iv = setInterval(() => setLine((n) => (n + 1) % LOADING_LINES.length), 2200);
@@ -160,7 +174,7 @@ export function CreateFlow() {
               rescue={phase.kind === 'ready' ? phase.result.level.rescue : []}
             />
             <p className="label mt-3 text-graphite">
-              {vision.marks.length} marks found · {vision.paperDetected ? 'paper flattened' : 'no paper edge found, cropped'} · vision {vision.ms}ms
+              {vision.marks.length} marks found · {vision.paperDetected ? 'paper flattened' : 'no paper edge, fitted to 16:9'} · vision {vision.ms}ms
               {phase.kind === 'ready' && ` · Gemma ${(phase.result.ms / 1000).toFixed(1)}s`}
             </p>
           </div>

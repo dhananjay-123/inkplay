@@ -50,7 +50,8 @@ You receive an image of a drawing where every ink mark has a thin box and a bold
 
 Use common sense:
 - sharp or dangerous things (zigzags, spikes, fire, cactus, saw, lava) are hazards
-- springy things (springs, trampolines, mushrooms, coils) are bouncy
+- springy things (springs, trampolines, mushrooms, coils) are bouncy. A horizontal bar or sagging mat raised on two short legs is a trampoline, even with lines or hatching underneath (those are its springs)
+- the mark list below says "zigzag" for marks measured to be a zigzag: those are spikes (hazard). A mark NOT tagged zigzag is not spikes (it can still be another hazard like a cactus or fire)
 - animals, monsters, people other than the hero are enemies; arrows next to them give direction
 - food, money, gems, "$", shiny things are collectibles; special items (chai, lightning, hearts, potions) are powerups
 - a letter P or a stick figure is the player. Hand-drawn letters are wobbly and often traced over several times: a vertical stem with a loop at its top right is a P, however messy. There is exactly ONE player; if nothing is clearly a P or a figure, pick the mark that looks most like one
@@ -73,7 +74,8 @@ export function parsePrompt(marks: Mark[], twoImages = false): string {
   const lines = marks.map((m) => {
     const b = m.bbox;
     const shape = m.aspect > 4 ? 'wide' : m.aspect < 0.25 ? 'tall' : 'compact';
-    return `#${m.id}: x=${b.x.toFixed(2)} y=${b.y.toFixed(2)} w=${b.w.toFixed(2)} h=${b.h.toFixed(2)} (${shape})`;
+    const zig = m.zigzag ? ', zigzag: sharp points up and down' : '';
+    return `#${m.id}: x=${b.x.toFixed(2)} y=${b.y.toFixed(2)} w=${b.w.toFixed(2)} h=${b.h.toFixed(2)} (${shape}${zig})`;
   });
   const intro = twoImages
     ? `Image 1 is the clean drawing (look here to recognise what each thing is). Image 2 is the same drawing with ${marks.length} numbered boxes (use it only to match numbers to things).`

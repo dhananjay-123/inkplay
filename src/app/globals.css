@@ -411,3 +411,13 @@ body {
   }
   .si-flash { opacity: 1; }
 }
+
+/* Nav link clicked, page on its way: the icon scribbles so the click never feels dead. */
+.nav-pending {
+  animation: nav-pending 0.45s ease-in-out infinite;
+}
+@keyframes nav-pending {
+  0%, 100% { rotate: 0deg; }
+  25% { rotate: -14deg; }
+  75% { rotate: 14deg; }
+}
