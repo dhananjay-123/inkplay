@@ -42,8 +42,12 @@ export type EnemyKind = (typeof ENEMY_KINDS)[number];
 export const MAX_ENEMIES = 8;
 
 /** What the map maker asks for. Gemma gets it as constraints; applyOptions enforces it. */
+export const MAX_BOTS = 8;
+
 export const MapOptionsSchema = z.object({
   enemies: z.number().int().min(0).max(MAX_ENEMIES).default(3),
+  /** AI players that fight like humans (simulated by the room host). */
+  bots: z.number().int().min(0).max(MAX_BOTS).default(2),
   pickups: z.enum(['few', 'normal', 'lots']).default('normal'),
   weapons: z.boolean().default(true),
   buffs: z.boolean().default(true),
@@ -82,6 +86,8 @@ export const ArenaMapSchema = z.object({
   platforms: z.array(Platform).min(1).max(MAX_PLATFORMS + 1),
   hazards: z.array(Hazard).max(MAX_HAZARDS).default([]),
   enemies: z.array(Enemy).max(MAX_ENEMIES).default([]),
+  /** How many AI players the room starts with (changeable live). */
+  bots: z.number().int().min(0).max(MAX_BOTS).default(0),
   spawns: z.array(Point).min(1).max(MAX_SPAWNS),
   pickups: z.array(Point.extend({ kind: z.enum(PICKUPS) })).max(MAX_PICKUPS),
   rules: z.array(ArenaRuleSchema).max(5),
@@ -189,6 +195,7 @@ export type DraftArena = {
   platforms: Platform[];
   hazards: Hazard[];
   enemies: Enemy[];
+  bots?: number;
   spawns: z.infer<typeof Point>[];
   pickups: (z.infer<typeof Point> & { kind: PickupKind })[];
   rules: ArenaRule[];
@@ -249,6 +256,8 @@ const PH = 44 / ARENA_WORLD.height;
 
 const overlaps = (a: z.infer<typeof Rect>, b: z.infer<typeof Rect>) =>
   a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+const overlapArea = (a: z.infer<typeof Rect>, b: z.infer<typeof Rect>) =>
+  Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
 
 /** Deterministic PRNG so the same seed gives the same map on every client. */
 export function mulberry32(seed: number): () => number {
@@ -269,18 +278,22 @@ export function mulberry32(seed: number): () => number {
 export function finalizeArena(d: DraftArena, seed: number, sampleId?: string): ArenaMap {
   const platforms: Platform[] = d.platforms
     .map((r) => {
-      const w = clamp(r.w, 0.02, 0.7);
+      // a floor may span the page; anything else is capped so it isn't one giant slab
+      const floorLike = r.y > 0.85 && r.h <= 0.08;
+      const w = clamp(r.w, 0.02, floorLike ? 1 : 0.7);
       const h = clamp(r.h, 0.012, 0.2);
       return { x: clamp(r.x, 0, 1 - w), y: clamp(r.y, 0.08, 1 - h), w, h, ...(r.crumble ? { crumble: true } : {}) };
     })
     .slice(0, MAX_PLATFORMS);
 
-  // A solid floor so nobody falls forever (the world bounds also stop you).
+  // A solid floor so nobody falls forever (the world bounds also stop you),
+  // added before separating so everything else makes room for it.
   const isFloor = (p: z.infer<typeof Rect>) => p.y + p.h > 0.9 && p.w > 0.35;
   for (const p of platforms) if (isFloor(p)) delete p.crumble;
   if (!platforms.some(isFloor)) platforms.push({ x: 0, y: 0.955, w: 1, h: 0.045 });
+  platforms.splice(0, platforms.length, ...separate(platforms));
 
-  const hazards: Hazard[] = d.hazards.slice(0, MAX_HAZARDS).map((hz) => {
+  const placedHazards: Hazard[] = d.hazards.slice(0, MAX_HAZARDS).map((hz) => {
     // lava pits stay pits, not a whole floor of lava
     const w = clamp(hz.w, 0.03, hz.kind === 'lava' ? 0.32 : 1);
     const h = clamp(hz.h, 0.015, hz.kind === 'water' ? 0.35 : 0.06);
@@ -289,6 +302,30 @@ export function finalizeArena(d: DraftArena, seed: number, sampleId?: string): A
     if (hz.kind === 'water') out.flow = clamp(hz.flow ?? 0, -1, 1);
     return reachable(out, platforms);
   });
+  // No stacked hazards; water sits on platforms instead of swallowing them.
+  const hazards: Hazard[] = [];
+  for (const hz of placedHazards) {
+    if (hz.kind === 'water') {
+      const below = platforms.filter((p) => p.x < hz.x + hz.w && p.x + p.w > hz.x && p.y > hz.y + hz.h * 0.4 && p.y < hz.y + hz.h);
+      if (below.length) hz.h = Math.min(...below.map((p) => p.y)) - hz.y;
+      const swallowed = platforms.some((p) => !isFloor(p) && overlapArea(p, hz) > 0.2 * p.w * p.h);
+      if (swallowed || hz.h < 0.03) continue;
+      // a ledge poking in from the side: the pool stops at the ledge
+      for (const p of platforms) {
+        if (!overlaps(p, hz)) continue;
+        if (p.x + p.w / 2 < hz.x + hz.w / 2) {
+          const right = hz.x + hz.w;
+          hz.x = p.x + p.w;
+          hz.w = right - hz.x;
+        } else hz.w = p.x - hz.x;
+      }
+      if (hz.w < 0.05) continue;
+    } else if (platforms.some((p) => overlapArea(p, hz) > 1e-6)) {
+      continue; // lava/spikes still inside a platform after reachable(): drop
+    }
+    if (hazards.some((o) => overlaps(o, hz))) continue;
+    hazards.push(hz);
+  }
   const lava = hazards.filter((hz) => hz.kind !== 'water');
 
   const free = (pt: { x: number; y: number }) => {
@@ -320,10 +357,12 @@ export function finalizeArena(d: DraftArena, seed: number, sampleId?: string): A
   }
   if (spawns.length === 0) spawns.push({ x: 0.5, y: 0.95 });
 
-  const pickups = d.pickups
-    .slice(0, MAX_PICKUPS)
-    .map((p) => ({ ...land({ x: clamp(p.x, 0, 1), y: clamp(p.y, 0, 1) }), kind: p.kind }))
-    .filter(free);
+  const pickups: (z.infer<typeof Point> & { kind: PickupKind })[] = [];
+  for (const raw of d.pickups.slice(0, MAX_PICKUPS)) {
+    const p = { ...land({ x: clamp(raw.x, 0, 1), y: clamp(raw.y, 0, 1) }), kind: raw.kind };
+    // crates don't stack on each other
+    if (free(p) && pickups.every((q) => Math.hypot(q.x - p.x, (q.y - p.y) * 0.56) > 0.035)) pickups.push(p);
+  }
 
   const enemies: Enemy[] = d.enemies.slice(0, MAX_ENEMIES).map((e) => {
     const pt = { x: clamp(e.x, 0.03, 0.97), y: clamp(e.y, 0.1, 0.95) };
@@ -339,6 +378,7 @@ export function finalizeArena(d: DraftArena, seed: number, sampleId?: string): A
     platforms,
     hazards,
     enemies,
+    bots: clamp(Math.round(d.bots ?? 0), 0, MAX_BOTS),
     spawns,
     pickups,
     rules,
@@ -367,6 +407,37 @@ export function arenaTuning(rules: ArenaRule[]) {
     if (r.kind === 'night_mode') t.night = true;
   }
   return t;
+}
+
+/**
+ * Platforms must not merge into one blob or leave slivers too thin to fly
+ * through. Bigger platforms win; a smaller one that touches or overlaps them
+ * moves just above or below (leaving room for a player), or is dropped.
+ * Cover (a block standing on top of a wider platform) is allowed to touch.
+ */
+function separate(platforms: Platform[]): Platform[] {
+  const GAP_X = 0.025; // ~60 px
+  const GAP_Y = 0.06; // ~80 px: a player (44 px) can jet through
+  const near = (a: Platform, b: Platform) => a.x < b.x + b.w + GAP_X && a.x + a.w > b.x - GAP_X && a.y < b.y + b.h + GAP_Y && a.y + a.h > b.y - GAP_Y;
+  const restsOn = (a: Platform, b: Platform) =>
+    a.h > 0.04 && a.w < b.w && Math.abs(a.y + a.h - b.y) < 0.006 && a.x >= b.x - 0.002 && a.x + a.w <= b.x + b.w + 0.002;
+  const clash = (a: Platform, kept: Platform[]) => kept.filter((k) => near(a, k) && !restsOn(a, k));
+  const kept: Platform[] = [];
+  for (const p of [...platforms].sort((a, b) => b.w * b.h - a.w * a.h)) {
+    const hits = clash(p, kept);
+    if (!hits.length) {
+      kept.push(p);
+      continue;
+    }
+    const tries = hits.flatMap((k) => [k.y - GAP_Y - p.h, k.y + k.h + GAP_Y]);
+    const moved = tries.map((y) => ({ ...p, y })).find((c) => c.y >= 0.08 && c.y + c.h <= 1 && !clash(c, kept).length);
+    if (moved) kept.push(moved);
+  }
+  // cover standing on a platform sits exactly on its top (no sinking in)
+  return kept.map((p) => {
+    const base = kept.find((k) => k !== p && restsOn(p, k));
+    return base ? { ...p, y: base.y - p.h } : p;
+  });
 }
 
 /**
@@ -417,6 +488,7 @@ export function applyOptions(d: DraftArena, o: MapOptions, seed: number): DraftA
     hazards: d.hazards.filter((h) => allowedHazard(h.kind)),
     pickups: d.pickups.filter((p) => kinds.includes(p.kind)),
     enemies: d.enemies.slice(0, o.enemies),
+    bots: o.bots,
   };
   // some crumbling ledges if wanted and none were drawn
   if (o.crumble && !out.platforms.some((p) => p.crumble)) {

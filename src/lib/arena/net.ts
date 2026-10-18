@@ -19,6 +19,8 @@ export type Shot = [number, number, number, number, number];
 export type NpcState = [number, number, number, number, number, number];
 /** An enemy's shot: [x, y, angle, enemy id]. */
 export type NpcShot = [number, number, number, number];
+/** One AI player, as the host broadcasts it: [index, x, y, hp, alive, aim, jet, kills, deaths]. */
+export type BotState = [number, number, number, number, number, number, number, number, number];
 
 export type NetMsg =
   | {
@@ -48,10 +50,16 @@ export type NetMsg =
       /** Room host only: hostile enemies, their shots, and the host's join time (tie-break between two hosts). */
       n?: NpcState[];
       ns?: NpcShot[];
+      /** Room host only: AI players, their shots ([x, y, angle, bot index]) and how many there are. */
+      b?: BotState[];
+      bs?: NpcShot[];
+      bn?: number;
       /** When the sender joined: the room host is whoever joined first among the players still here. */
       j: number;
     }
   | { t: 'npcdie'; id: number; killer: string | null }
+  /** Anyone can change the number of AI players for the current map round. */
+  | { t: 'bots'; n: number; r: number }
   | { t: 'die'; victim: string; killer: string | null }
   | { t: 'map'; map: ArenaMap; from: string; round: number; note?: string }
   | { t: 'needmap'; from: string }
