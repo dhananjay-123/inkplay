@@ -281,11 +281,13 @@ export function finalizeArena(d: DraftArena, seed: number, sampleId?: string): A
   if (!platforms.some(isFloor)) platforms.push({ x: 0, y: 0.955, w: 1, h: 0.045 });
 
   const hazards: Hazard[] = d.hazards.slice(0, MAX_HAZARDS).map((hz) => {
-    const w = clamp(hz.w, 0.03, 1);
-    const h = clamp(hz.h, 0.015, 0.35);
-    const out: Hazard = { x: clamp(hz.x, 0, 1 - w), y: clamp(hz.y, 0.1, 1 - h), w, h, kind: hz.kind };
+    // lava pits stay pits, not a whole floor of lava
+    const w = clamp(hz.w, 0.03, hz.kind === 'lava' ? 0.32 : 1);
+    const h = clamp(hz.h, 0.015, hz.kind === 'water' ? 0.35 : 0.06);
+    const cx = hz.x + hz.w / 2;
+    const out: Hazard = { x: clamp(hz.kind === 'lava' ? cx - w / 2 : hz.x, 0, 1 - w), y: clamp(hz.y, 0.1, 1 - h), w, h, kind: hz.kind };
     if (hz.kind === 'water') out.flow = clamp(hz.flow ?? 0, -1, 1);
-    return out;
+    return reachable(out, platforms);
   });
   const lava = hazards.filter((hz) => hz.kind !== 'water');
 
@@ -365,6 +367,29 @@ export function arenaTuning(rules: ArenaRule[]) {
     if (r.kind === 'night_mode') t.night = true;
   }
   return t;
+}
+
+/**
+ * A hazard nobody can touch is pointless (Gemma put lava *under* the floor).
+ * Lava and spikes rest on the surface below them; then anything a solid
+ * platform covers (no head-room for a player above it) is lifted on top.
+ */
+function reachable(hz: Hazard, platforms: Platform[]): Hazard {
+  const solid = platforms.filter((p) => !p.crumble);
+  const under = (p: Platform) => Math.min(p.x + p.w, hz.x + hz.w) - Math.max(p.x, hz.x) > Math.min(hz.w, p.w) * 0.3;
+  const out = { ...hz };
+  if (out.kind !== 'water') {
+    const below = solid.filter((p) => under(p) && p.y >= out.y + out.h * 0.5).sort((a, b) => a.y - b.y)[0];
+    out.y = below ? below.y - out.h : 1 - out.h;
+  }
+  for (let i = 0; i < 4; i++) {
+    const room = { x: out.x, y: out.y - PH * 1.5, w: out.w, h: out.h + PH * 1.5 };
+    const cover = solid.filter((p) => under(p) && overlaps(room, p) && p.y < out.y + out.h - 0.002).sort((a, b) => a.y - b.y)[0];
+    if (!cover) break;
+    out.y = cover.y - out.h;
+  }
+  out.y = clamp(out.y, 0.1, 1 - out.h);
+  return out;
 }
 
 /* ---------- options + "more like this" ---------- */
