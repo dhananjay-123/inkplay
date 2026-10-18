@@ -19,8 +19,27 @@ decision, why.
   `systemInstruction` or `responseSchema`.
 - **Decision:** system prompt is prepended to the user turn; output is parsed
   defensively (fence strip → JSON.parse → Zod → one retry).
-- **Why:** works whether or not the features exist. To be confirmed by the
-  Phase 1 smoke test — update this entry with the result.
+- **Why:** works whether or not the features exist.
+- **Phase 1 result (2026-10-18, `gemma-4-26b-a4b-it`):** `systemInstruction`
+  **is supported** and is faster (≈11–15 s vs 21–30 s inline), so it is now the
+  default. JSON mode (`responseMimeType`) returns the object wrapped in an
+  array → costs a retry; left off (we also unwrap one-item arrays). The 31B
+  model returned 500s/timeouts; 26B-A4B is the default.
+
+### D10 — Gemma 4 thinking set to MINIMAL
+- **Context:** by default Gemma 4 spends ~1k hidden thought tokens per call
+  (a one-line prompt took 21 s). `thinkingBudget` and `thinkingLevel: LOW`
+  are rejected (400); `thinkingLevel: MINIMAL` works (1.1 s, 0 thought tokens).
+- **Decision:** `GEMMA_THINKING=minimal` by default; on a 400 mentioning
+  thinking we retry without the knob and remember that.
+- **Why:** 2–3× faster with no accuracy loss on the 5 samples.
+
+### D11 — Send the clean drawing *and* the set-of-marks image
+- **Context:** with only the numbered image, cacti were twice labelled
+  "pillar platform" (boxes clutter the shapes).
+- **Decision:** image 1 = clean drawing (recognise), image 2 = numbered boxes
+  (match ids). Native system + two images: cactus → hazard 3/3, cloud →
+  platform 3/3, ≈10.5 s.
 
 ### D3 — Next 16 Cache Components stays on; no `runtime` export
 - **Context:** `create-next-app` enabled `cacheComponents`, which forbids the

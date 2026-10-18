@@ -107,7 +107,7 @@ export function CreateFlow() {
     <section className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-8">
       <header className="pt-6 pb-8">
         <p className="label text-graphite">Step 1 · Snap your drawing</p>
-        <h1 className="font-display mt-2 text-5xl font-extrabold tracking-tight sm:text-7xl">Show Gemma your page.</h1>
+        <h1 className="font-display mt-2 text-[clamp(2.5rem,7vw,4.5rem)] leading-[0.95] font-extrabold tracking-tight">Show Gemma your page.</h1>
       </header>
 
       {!vision && (
@@ -149,8 +149,8 @@ export function CreateFlow() {
       )}
 
       {vision && (
-        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-          <div>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0">
             <MarksReveal
               image={vision.cleanFull}
               marks={vision.marks}

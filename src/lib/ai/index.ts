@@ -1,5 +1,5 @@
 import 'server-only';
-import { ApiError, GoogleGenAI, type Part } from '@google/genai';
+import { ApiError, GoogleGenAI, ThinkingLevel, type Part } from '@google/genai';
 import { z } from 'zod';
 import { env, provider as defaultProvider, type Provider } from '@/lib/env';
 
@@ -15,8 +15,9 @@ export type GenerateOptions<T> = {
   temperature?: number;
   provider?: Provider;
   /**
-   * Gemini only. Gemma on the Gemini API is not assumed to support these, so
-   * both default off; scripts/test-model.ts probes them.
+   * Gemini only. Phase 1 verified Gemma 4 accepts systemInstruction (and it
+   * is faster), so it defaults on. JSON mode wraps output in an array and
+   * stays off. scripts/test-model.ts --probe re-checks both.
    */
   nativeSystemInstruction?: boolean;
   jsonMode?: boolean;
@@ -54,16 +55,43 @@ export function extractJSON(text: string): unknown {
   }
 }
 
+/** Some modes wrap the object in a one-item array: `[{...}]`. */
+function unwrap(v: unknown): unknown {
+  return Array.isArray(v) && v.length === 1 && v[0] && typeof v[0] === 'object' ? v[0] : v;
+}
+
 /* ---------------- providers ---------------- */
 
 let gemini: GoogleGenAI | null = null;
+/** Set once a model rejects thinkingConfig, so we stop sending it. */
+let thinkingUnsupported = false;
 
 async function callGemini(opts: GenerateOptions<unknown>, extra: string): Promise<string> {
+  try {
+    return await callGeminiOnce(opts, extra, env.GEMMA_THINKING === 'minimal' && !thinkingUnsupported);
+  } catch (e) {
+    // Transient 5xx from the API: one quick retry if time allows.
+    if (e instanceof AIError && e.code === 'unavailable' && (opts.timeoutMs ?? 55_000) > 15_000) {
+      await new Promise((r) => setTimeout(r, 700));
+      return callGeminiOnce({ ...opts, timeoutMs: (opts.timeoutMs ?? 55_000) - 2_000 }, extra, env.GEMMA_THINKING === 'minimal' && !thinkingUnsupported);
+    }
+    // Gemma 4 thinks for ~1k hidden tokens by default (20s+ per call); MINIMAL
+    // removes that. Models without the knob answer 400 — retry without it.
+    if (e instanceof AIError && e.code === 'misconfigured' && /thinking/i.test(e.detail ?? '')) {
+      thinkingUnsupported = true;
+      return callGeminiOnce(opts, extra, false);
+    }
+    throw e;
+  }
+}
+
+async function callGeminiOnce(opts: GenerateOptions<unknown>, extra: string, minimalThinking: boolean): Promise<string> {
   if (!env.GEMINI_API_KEY || !env.GEMMA_CLOUD_MODEL) {
     throw new AIError('misconfigured', 'GEMINI_API_KEY and GEMMA_CLOUD_MODEL must be set for MODEL_PROVIDER=gemini');
   }
   gemini ??= new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
-  const text = opts.nativeSystemInstruction ? opts.prompt + extra : `${opts.system}\n\n---\n\n${opts.prompt}${extra}`;
+  const native = opts.nativeSystemInstruction ?? true;
+  const text = native ? opts.prompt + extra : `${opts.system}\n\n---\n\n${opts.prompt}${extra}`;
   const parts: Part[] = [
     ...(opts.images ?? []).map((data) => ({ inlineData: { mimeType: 'image/jpeg', data: stripDataUrl(data) } })),
     { text },
@@ -74,8 +102,9 @@ async function callGemini(opts: GenerateOptions<unknown>, extra: string): Promis
       contents: [{ role: 'user', parts }],
       config: {
         temperature: opts.temperature ?? 0.2,
-        ...(opts.nativeSystemInstruction ? { systemInstruction: opts.system } : {}),
+        ...(native ? { systemInstruction: opts.system } : {}),
         ...(opts.jsonMode ? { responseMimeType: 'application/json' } : {}),
+        ...(minimalThinking ? { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } } : {}),
         abortSignal: AbortSignal.timeout(opts.timeoutMs ?? 55_000),
       },
     });
@@ -154,13 +183,16 @@ export async function generateJSON<T>(opts: GenerateOptions<T>): Promise<Generat
           }
         : callGemini;
   const started = performance.now();
+  const budget = opts.timeoutMs ?? (which === 'ollama' ? 120_000 : 55_000);
   let extra = '';
   let lastError = '';
   let raw = '';
   for (let attempt = 1; attempt <= 2; attempt++) {
-    raw = await call(opts as GenerateOptions<unknown>, extra);
+    const left = Math.floor(budget - (performance.now() - started));
+    if (left < 8_000) break; // no time for a meaningful retry
+    raw = await call({ ...(opts as GenerateOptions<unknown>), timeoutMs: left }, extra);
     try {
-      const parsed = opts.schema.safeParse(extractJSON(raw));
+      const parsed = opts.schema.safeParse(unwrap(extractJSON(raw)));
       if (parsed.success) {
         const ms = Math.round(performance.now() - started);
         console.info(`[ai] ${which} ok in ${ms}ms (attempt ${attempt})`);

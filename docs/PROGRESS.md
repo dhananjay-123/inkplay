@@ -7,9 +7,9 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 | # | Phase | Status | Notes |
 |---|---|---|---|
 | 0 | Repo + docs (`CLAUDE.md`, `docs/*`) | ✅ | |
-| 1 | Model smoke test (`scripts/test-model.ts`) | ⛔ | Script + vision verified; live runs need `GEMINI_API_KEY` + `GEMMA_CLOUD_MODEL`, and Ollama with `gemma4:e4b` (not installed on this laptop yet) |
+| 1 | Model smoke test (`scripts/test-model.ts`) | 🟡 | Gemini done (5/5 samples, see numbers below); Ollama not installed on this laptop yet |
 | 2 | Skeleton + deploy | 🟡 | Skeleton done; deploy waits on GitHub repo + Vercel project |
-| 3 | Core loop | 🟡 | Full loop verified in browser with `MODEL_PROVIDER=mock`; real-model runs pending |
+| 3 | Core loop | 🟡 | Verified end to end with real Gemma 4 (cloud); Ollama run pending |
 | 4 | Supabase gallery | ⬜ | Needs a Supabase project |
 | 5 | Design layer | ⬜ | |
 | 6 | Polish + resilience | ⬜ | |
@@ -20,9 +20,9 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 ### Phase 1 — Model smoke test
 - [x] `scripts/test-model.ts` loads a sample, calls `generateJSON`, prints JSON + latency
 - [x] `pnpm test:vision` — headless OpenCV run on all 5 samples, writes `.out/*.som.jpg`
-- [ ] Run against `gemini`
+- [x] Run against `gemini` (`gemma-4-26b-a4b-it`)
 - [ ] Run against `ollama`
-- [ ] Record: accuracy, seconds/call, system-instruction + JSON-mode support → `docs/DECISIONS.md`
+- [x] Record: accuracy, seconds/call, system-instruction + JSON-mode support → `docs/DECISIONS.md` (D2, D10, D11)
 
 ### Phase 2 — Skeleton + deploy
 - [x] Next.js + Tailwind v4 + fonts + tokens
@@ -61,5 +61,5 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 
 | Provider | Model | Parse latency | Review latency | Notes |
 |---|---|---|---|---|
-| gemini | — | — | — | |
+| gemini | gemma-4-26b-a4b-it | 10–31 s (median ≈ 13 s, script); 24 s in-browser for 14 marks | — | thinking MINIMAL, native system, 2 images. Accuracy: every player/goal/hazard/enemy/rule correct on 5 samples; the hatched trampoline reads as spikes |
 | ollama | gemma4:e4b | — | — | |

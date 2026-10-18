@@ -38,8 +38,10 @@ export async function POST(req: Request) {
   try {
     const res = await generateJSON({
       system: PARSE_SYSTEM,
-      prompt: parsePrompt(marks),
-      images: [somImage],
+      // Clean drawing to recognise things + numbered copy to match ids
+      // (Phase 1: this beat set-of-marks alone on open-vocabulary doodles).
+      prompt: parsePrompt(marks, true),
+      images: [cleanImage, somImage],
       schema: LevelFromModel,
       jsonSchema: LEVEL_JSON_SCHEMA,
       temperature: 0.2,

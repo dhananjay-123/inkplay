@@ -8,6 +8,8 @@ const EnvSchema = z.object({
   MODEL_PROVIDER: z.preprocess(emptyToUndefined, z.enum(['gemini', 'ollama', 'mock']).default('gemini')),
   GEMINI_API_KEY: optionalString,
   GEMMA_CLOUD_MODEL: optionalString,
+  /** minimal = fast (default); default = let the model think (slow, ~20s+). */
+  GEMMA_THINKING: z.preprocess(emptyToUndefined, z.enum(['minimal', 'default']).default('minimal')),
   OLLAMA_URL: z.preprocess(emptyToUndefined, z.string().url().default('http://127.0.0.1:11434')),
   OLLAMA_MODEL: z.preprocess(emptyToUndefined, z.string().default('gemma4:e4b')),
   NEXT_PUBLIC_SUPABASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),

@@ -68,13 +68,16 @@ ${SHAPE}
 
 ${FEW_SHOT}`;
 
-export function parsePrompt(marks: Mark[]): string {
+export function parsePrompt(marks: Mark[], twoImages = false): string {
   const lines = marks.map((m) => {
     const b = m.bbox;
     const shape = m.aspect > 4 ? 'wide' : m.aspect < 0.25 ? 'tall' : 'compact';
     return `#${m.id}: x=${b.x.toFixed(2)} y=${b.y.toFixed(2)} w=${b.w.toFixed(2)} h=${b.h.toFixed(2)} (${shape})`;
   });
-  return `The image shows ${marks.length} numbered marks. Coordinates are 0-1, origin top-left, so y near 1 is the bottom of the page.
+  const intro = twoImages
+    ? `Image 1 is the clean drawing (look here to recognise what each thing is). Image 2 is the same drawing with ${marks.length} numbered boxes (use it only to match numbers to things).`
+    : `The image shows ${marks.length} numbered marks.`;
+  return `${intro} Coordinates are 0-1, origin top-left, so y near 1 is the bottom of the page.
 ${lines.join('\n')}
 
 Label every one of the ${marks.length} marks (ids ${marks.map((m) => m.id).join(', ')}). Return only the JSON object.`;
