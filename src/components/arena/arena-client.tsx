@@ -294,11 +294,16 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
       bus.emit('peers', list.filter((p) => p.id !== meRef.current.id));
     });
     net.send({ t: 'needmap', from: me.id });
-    const t = setTimeout(() => setWaitedForMap(true), 2500);
+    // Ask twice: the first request can race the other clients' subscriptions.
+    const retry = setTimeout(() => {
+      if (!currentRef.current) net.send({ t: 'needmap', from: me.id });
+    }, 1200);
+    const t = setTimeout(() => setWaitedForMap(true), 3000);
     return () => {
       offMsg();
       offPeers();
       clearTimeout(t);
+      clearTimeout(retry);
     };
   }, [net, bus, me.id, adopt, broadcastMap, nameOf, pushFeed, creditKill]);
 
@@ -361,8 +366,18 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
     const all = peers.length ? peers : [me];
     return [...all].sort((a, b) => a.joinedAt - b.joinedAt || a.id.localeCompare(b.id))[0]?.id === me.id;
   }, [peers, me]);
-  // The host simulates the hostile enemies for everyone.
-  useEffect(() => bus.emit('host', host), [bus, host]);
+  // Someone is on a newer map (we missed it): ask again, at most every 3 s.
+  const lastAsk = useRef(0);
+  useEffect(
+    () =>
+      bus.on('newerMap', () => {
+        const now = performance.now();
+        if (now - lastAsk.current < 3000) return;
+        lastAsk.current = now;
+        net.send({ t: 'needmap', from: me.id });
+      }),
+    [bus, net, me.id],
+  );
 
   const copyInvite = async () => {
     const url = `${window.location.origin}/arena?room=${room}`;
@@ -437,7 +452,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
       <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size]">
         <div className="sketch relative aspect-video w-[min(100cqw,calc(100cqh*16/9))] overflow-hidden">
           {current ? (
-            <ArenaGame key={`${current.round}-${current.from}`} map={current.map} me={me} net={net} bus={bus} autofire={autofire} isHost={host} className="absolute inset-0" />
+            <ArenaGame key={`${current.round}-${current.from}`} map={current.map} me={me} net={net} bus={bus} autofire={autofire} round={current.round} mapFrom={current.from} className="absolute inset-0" />
           ) : (
             !showMaker && (
               <div className="absolute inset-0 grid place-items-center">
@@ -574,11 +589,12 @@ function MapMaker({ onMap, onClose }: { onMap: (m: ArenaMap, extra: Pick<Current
   };
 
   return (
-    <div className="absolute inset-0 z-20 overflow-y-auto bg-paper/95 p-4 sm:p-8" role="dialog" aria-label="Make a map">
+    // See-through: the arena keeps playing (and stays visible) behind the map maker.
+    <div className="absolute inset-0 z-20 overflow-y-auto bg-paper/45 p-4 backdrop-blur-[1.5px] sm:p-8 [&_.sketch-soft]:bg-card/80! [&_.sketch]:bg-card/80!" role="dialog" aria-label="Make a map">
       <div className="mx-auto grid max-w-3xl gap-5">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 rounded-[var(--wobble)] bg-card/90 px-4 py-3">
           <div>
-            <p className="font-hand text-lg text-pop">no map yet? make one</p>
+            <p className="font-hand text-lg text-pop">{onClose ? 'the game keeps going while you pick' : 'no map yet? make one'}</p>
             <h2 className="font-display text-3xl font-extrabold tracking-tight">Who designs the arena?</h2>
           </div>
           {onClose && (

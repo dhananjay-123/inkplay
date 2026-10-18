@@ -15,6 +15,7 @@ export function supabaseBrowser(): SupabaseClient | null {
     // heartbeat silently drops the socket (and the player) from the room.
     realtime: { params: { eventsPerSecond: 30 }, worker: true },
   });
+  if (process.env.NODE_ENV !== 'production') (window as unknown as { __sb?: unknown }).__sb = client;
   return client;
 }
 

@@ -21,12 +21,12 @@ export type ArenaEvents = {
   died: { killer: string | null };
   /** As room host I saw an enemy die (others hear it over the network). */
   npcdie: { killer: string | null };
+  /** Someone in the room is on a newer map than mine: ask for it. */
+  newerMap: void;
   // React → game
   peers: PlayerMeta[];
   touch: { left?: boolean; right?: boolean; jet?: boolean; grenade?: boolean };
   autofire: boolean;
-  /** This client simulates the hostile enemies for the room. */
-  host: boolean;
 };
 
 type Handler<T> = (payload: T) => void;

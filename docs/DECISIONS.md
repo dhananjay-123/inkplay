@@ -206,3 +206,32 @@ decision, why.
 - **Realtime resilience:** heartbeats run in a worker (`realtime.worker`)
   and presence is re-tracked after a rejoin; a throttled background tab
   used to drop out of the room silently.
+
+### D20 — Making multiplayer reliable
+- **Symptom:** players vanished, and different viewers saw different players.
+- **Found by testing** (3 headless bots + browser, `scripts/arena-bot.ts ROOM secs bots`):
+  Realtime sockets do drop (1006 closes, and a "silent" death where the
+  socket stays open but delivers nothing) and supabase-js did not always
+  recover; sends then fell back to one REST call per message.
+- **Fixes:**
+  - transport watchdog (`net.ts`): rebuild channel *and socket* when the
+    channel isn't joined for 4 s, when others are present but nothing has
+    arrived for 6 s, or on returning to the tab; presence re-tracked after
+    every join; 10 Hz state is dropped (not REST-posted) while disconnected.
+    Measured: a silent break heals in ~7 s with a new socket.
+  - players are added/removed by their own state messages, not presence
+    (presence flaps); name, colour and map round ride in every message.
+  - state from a different map round is ignored and triggers a map fetch.
+  - sender timestamps + per-sender clock offset remove network jitter;
+    remotes are drawn 150 ms behind.
+  - hidden tabs keep sending ~1/s marked `away` (drawn faded, not
+    targetable) instead of vanishing after 6 s.
+  - monster state rides in the host's state message (half the traffic);
+    the host is elected each frame from live players (earliest joiner not
+    in a background tab), so a sleeping host hands over automatically.
+- **Monsters:** first spawn after a 4 s grace (staggered), respawn after
+  20 s at a random spot away from every player (Gemma picks kinds and
+  count, not fixed spots); flyers collide with platforms.
+- **Minimap** (live dots for you, players, monsters) and a see-through map
+  maker so the arena stays visible behind it.
+- Measured with 4 clients: 9.4 msgs/s per sender, max gap < 0.45 s.
