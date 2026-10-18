@@ -3,6 +3,7 @@ import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { DoodleCard } from '@/components/gallery/doodle-card';
 import { HeroDoodle } from '@/components/home/hero-doodle';
+import { IntroFilm } from '@/components/home/intro-film';
 import { Reveal, Scribble } from '@/components/home/reveal';
 import { hasSupabase } from '@/lib/env';
 import { listLevels } from '@/lib/supabase/server';
@@ -40,6 +41,7 @@ const STEPS = [
 export default function Home() {
   return (
     <>
+      <IntroFilm />
       {/* ---------------------------------------------------------- hero */}
       <section className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-4 pt-10 pb-20 sm:px-8 lg:grid-cols-[1.1fr_1fr]">
         <div>

@@ -112,9 +112,9 @@ export function InkCursor() {
       <div ref={nibRef} aria-hidden data-state="idle" className="ink-cursor pointer-events-none fixed top-0 left-0 z-[9999] opacity-0">
         {/* nib tip sits exactly on the pointer hotspot (0,0) */}
         <svg width="30" height="30" viewBox="0 0 30 30" className="ink-cursor-nib">
-          <path d="M1.5 1.5 L9 21 L13 17 L24 28 L28 24 L17 13 L21 9 Z" fill="var(--cursor-fill)" stroke="var(--accent-ink)" strokeWidth="1.6" strokeLinejoin="round" />
-          <path d="M1.5 1.5 L11 11" stroke="var(--accent-ink)" strokeWidth="1.4" strokeLinecap="round" />
-          <circle cx="11.2" cy="11.2" r="1.6" fill="var(--accent-ink)" />
+          <path d="M1.5 1.5 L9 21 L13 17 L24 28 L28 24 L17 13 L21 9 Z" fill="var(--cursor-fill)" stroke="var(--cursor-stroke)" strokeWidth="1.8" strokeLinejoin="round" />
+          <path d="M1.5 1.5 L11 11" stroke="var(--cursor-stroke)" strokeWidth="1.4" strokeLinecap="round" />
+          <circle cx="11.2" cy="11.2" r="1.6" fill="var(--cursor-stroke)" />
         </svg>
       </div>
     </>

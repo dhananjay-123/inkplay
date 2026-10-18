@@ -17,17 +17,18 @@ export function ruleChip(r: Rule): string {
   }
 }
 
+/** Tag colours for the set-of-marks reveal (light drawing behind, white text). */
 export const ROLE_COLOR: Record<Role, string> = {
-  platform: 'var(--ink)',
-  hazard: 'var(--hazard)',
-  bouncy: 'var(--ink)',
-  enemy: 'var(--hazard)',
-  collectible: 'var(--ink)',
-  powerup: 'var(--ink)',
-  goal: 'var(--ink)',
-  player: 'var(--ink)',
-  rule_text: 'var(--graphite)',
-  decoration: 'var(--graphite)',
+  platform: 'var(--tag-platform)',
+  hazard: 'var(--tag-hazard)',
+  bouncy: 'var(--tag-bouncy)',
+  enemy: 'var(--tag-hazard)',
+  collectible: 'var(--tag-collectible)',
+  powerup: 'var(--tag-powerup)',
+  goal: 'var(--tag-goal)',
+  player: 'var(--tag-player)',
+  rule_text: 'var(--tag-text)',
+  decoration: 'var(--tag-text)',
 };
 
 export const ROLE_LABEL: Record<Role, string> = {

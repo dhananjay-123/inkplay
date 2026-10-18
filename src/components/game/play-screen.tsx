@@ -76,59 +76,64 @@ export function PlayScreen({ data }: Props) {
   const time = live.timeLeft !== null ? `${Math.ceil(live.timeLeft)}s left` : `${live.timeSeconds.toFixed(1)}s`;
 
   return (
-    <div className="relative mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-2 pb-4 sm:px-6">
-      {/* HUD top */}
-      <div className="flex flex-wrap items-end justify-between gap-3 px-2 pb-3">
-        <div className="min-w-0">
-          <p className="label text-graphite">Difficulty {level.difficulty}/10</p>
-          <h1 className="font-display truncate text-3xl font-extrabold tracking-tight sm:text-4xl">{level.title}</h1>
+    // Exactly one screen tall: HUD row, the game (as big as fits at 16:9), one footer line.
+    <div className="relative mx-auto flex h-[calc(100dvh-var(--nav-h))] w-full max-w-[1800px] flex-col px-2 pb-2 sm:px-6">
+      {/* HUD: title + rule chips | stats + actions */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1 pb-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <h1 className="font-display truncate text-2xl font-extrabold tracking-tight sm:text-3xl" title={`Difficulty ${level.difficulty}/10`}>
+            {level.title}
+          </h1>
+          <span className="label text-[0.62rem] text-graphite">diff {level.difficulty}/10</span>
+          {level.rules.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5" aria-label="Rules read from your paper">
+              {level.rules.map((r, i) => (
+                <li
+                  key={i}
+                  className="label rotate-[-1deg] bg-accent px-2 py-0.5 text-[0.62rem] text-accent-ink shadow-[2px_2px_0_var(--pop)] odd:rotate-[1deg]"
+                  title="Read from your paper"
+                >
+                  {ruleChip(r)} ✓
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        <div className="label flex items-center gap-4 tabular-nums">
+        <div className="label flex items-center gap-3 tabular-nums sm:gap-4">
           <span title="Deaths">✕ {live.deaths}</span>
           <CoinTracker got={live.coins} total={totalCoins} />
           <span title="Time">{time}</span>
-          <button type="button" onClick={toggleMuted} className="rounded-full border border-current px-3 py-1.5 hover:bg-ink hover:text-paper" aria-pressed={!muted}>
+          <button type="button" onClick={toggleMuted} className="rounded-full border border-current px-3 py-1 hover:bg-ink hover:text-paper" aria-pressed={!muted}>
             {muted ? 'Sound off' : 'Sound on'}
           </button>
-          <button type="button" onClick={() => bus.emit('restart')} className="rounded-full border border-current px-3 py-1.5 hover:bg-ink hover:text-paper">
+          <button type="button" onClick={() => bus.emit('restart')} className="rounded-full border border-current px-3 py-1 hover:bg-ink hover:text-paper">
             Restart
           </button>
           {id && (
-            <button type="button" onClick={share} className="btn-game px-3 py-1.5">
+            <button type="button" onClick={share} className="btn-game px-3 py-1">
               {copied ? 'Link copied' : 'Share'}
             </button>
           )}
         </div>
       </div>
 
-      {/* rule chips */}
-      {level.rules.length > 0 && (
-        <ul className="flex flex-wrap gap-2 px-2 pb-3" aria-label="Rules read from your paper">
-          {level.rules.map((r, i) => (
-            <li
-              key={i}
-              className="label rotate-[-1deg] bg-accent px-2.5 py-1 text-accent-ink shadow-[2px_2px_0_var(--pop)] odd:rotate-[1deg]"
-              title="Read from your paper"
-            >
-              {ruleChip(r)} ✓
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* game */}
-      <div className="relative aspect-video w-full overflow-hidden rounded-sm bg-[#F3EEE3] shadow-[var(--shadow)] ring-1 ring-ink/10">
-        <PhaserGame data={data} bus={bus} runKey={runKey} className="absolute inset-0" />
-        {end && <EndCard stats={end} totalCoins={totalCoins} review={review} onAgain={again} hasId={Boolean(id)} />}
+      {/* game: the largest 16:9 box that fits the remaining space */}
+      <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size]">
+        <div className="relative aspect-video w-[min(100cqw,calc(100cqh*16/9))] overflow-hidden rounded-sm bg-[#F3EEE3] shadow-[var(--shadow)] ring-1 ring-ink/10">
+          <PhaserGame data={data} bus={bus} runKey={runKey} className="absolute inset-0" />
+          {end && <EndCard stats={end} totalCoins={totalCoins} review={review} onAgain={again} hasId={Boolean(id)} />}
+        </div>
       </div>
 
-      <div className="flex items-center justify-between px-2 pt-3">
-        <p className="font-hand text-lg text-graphite">{level.story}</p>
-        <button type="button" onClick={() => bus.emit('giveUp')} className="label text-graphite hover:text-ink">
+      <div className="flex items-center gap-4 px-1 pt-2">
+        <p className="font-hand min-w-0 flex-1 truncate text-base text-graphite" title={level.story}>
+          {level.story}
+        </p>
+        <p className="label hidden shrink-0 text-[0.6rem] text-graphite lg:block">←/→ A/D move · Space W ↑ jump · R restart</p>
+        <button type="button" onClick={() => bus.emit('giveUp')} className="label shrink-0 text-graphite hover:text-ink">
           Give up
         </button>
       </div>
-      <p className="label px-2 pt-1 text-graphite">←/→ or A/D to move · Space / W / ↑ to jump · R to restart</p>
       <TouchControls bus={bus} />
     </div>
   );

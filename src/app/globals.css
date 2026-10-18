@@ -17,6 +17,16 @@
   --sun: #ffc93c;
   --sky: #2ec5ff;
   --card: #ffffff;
+  /* Mark tags sit on the (always light) drawing, so these never flip in dark mode. */
+  --nav-h: 3.5rem;
+  --tag-platform: #1a1033;
+  --tag-hazard: #e8193c;
+  --tag-bouncy: #d97706;
+  --tag-collectible: #b45309;
+  --tag-powerup: #6d4aff;
+  --tag-goal: #15803d;
+  --tag-player: #0369a1;
+  --tag-text: #6b5e8c;
   --shadow: 0 1px 0 rgba(26, 16, 51, 0.08), 0 14px 34px -14px rgba(60, 30, 140, 0.35);
   color-scheme: light;
 }
@@ -244,7 +254,9 @@ body {
   }
 }
 .ink-cursor {
-  --cursor-fill: var(--paper);
+  /* ink body + paper outline: inverts with the theme, readable on both */
+  --cursor-fill: var(--ink);
+  --cursor-stroke: var(--paper);
   transition: opacity 0.2s;
 }
 .ink-cursor-nib {
@@ -254,6 +266,7 @@ body {
 }
 .ink-cursor[data-state="cta"] {
   --cursor-fill: var(--accent);
+  --cursor-stroke: var(--accent-ink);
 }
 .ink-cursor[data-state="cta"] .ink-cursor-nib {
   transform: scale(1.45) rotate(-8deg);
@@ -263,4 +276,41 @@ body {
 }
 .ink-cursor-down .ink-cursor-nib {
   transform: scale(0.85);
+}
+
+/* ------------------------------------------------------------------
+   Intro film (components/home/intro-film.tsx): always a light notebook
+   page, whatever the theme, so the ink hero reads.
+------------------------------------------------------------------- */
+.intro-film {
+  --paper: #fff7e6;
+  --ink: #1a1033;
+  --graphite: #6b5e8c;
+  --card: #ffffff;
+  --pop: #7b5cff;
+  color-scheme: light;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(rgba(26, 16, 51, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 16, 51, 0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
+  clip-path: inset(0 0 0 0);
+}
+.intro-pip.on {
+  background: currentColor;
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-film {
+    display: none !important;
+  }
+}
+/* Hidden until GSAP takes over, so the finished level never flashes first. */
+.intro-film [data-draw] {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.intro-film [data-pop],
+.intro-film [data-hero],
+.intro-film [data-hud] {
+  opacity: 0;
 }

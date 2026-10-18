@@ -9,7 +9,7 @@ const LINKS = [
 
 export function SiteNav() {
   return (
-    <header className="relative z-40 flex items-center justify-between px-4 py-4 sm:px-8">
+    <header className="relative z-40 flex h-[var(--nav-h)] shrink-0 items-center justify-between px-4 sm:px-8">
       <Link href="/" className="font-display text-xl font-extrabold tracking-tight">
         INKPLAY<span className="text-hazard">.</span>
       </Link>
