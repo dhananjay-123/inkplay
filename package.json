@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "demo": "cross-env MODEL_PROVIDER=ollama next start",
     "test:model": "tsx --conditions=react-server scripts/test-model.ts",
     "test:vision": "tsx scripts/test-vision.ts",

@@ -5,7 +5,7 @@ const emptyToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === 
 const optionalString = z.preprocess(emptyToUndefined, z.string().optional());
 
 const EnvSchema = z.object({
-  MODEL_PROVIDER: z.preprocess(emptyToUndefined, z.enum(['gemini', 'ollama']).default('gemini')),
+  MODEL_PROVIDER: z.preprocess(emptyToUndefined, z.enum(['gemini', 'ollama', 'mock']).default('gemini')),
   GEMINI_API_KEY: optionalString,
   GEMMA_CLOUD_MODEL: optionalString,
   OLLAMA_URL: z.preprocess(emptyToUndefined, z.string().url().default('http://127.0.0.1:11434')),
@@ -39,5 +39,6 @@ export const hasSupabase = Boolean(
 );
 
 export function modelName(): string {
+  if (provider === 'mock') return 'mock (no model)';
   return provider === 'ollama' ? env.OLLAMA_MODEL : env.GEMMA_CLOUD_MODEL ?? '(GEMMA_CLOUD_MODEL not set)';
 }

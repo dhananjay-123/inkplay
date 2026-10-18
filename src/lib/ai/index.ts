@@ -21,6 +21,8 @@ export type GenerateOptions<T> = {
   nativeSystemInstruction?: boolean;
   jsonMode?: boolean;
   timeoutMs?: number;
+  /** MODEL_PROVIDER=mock: produce the "model output" without a model. */
+  mock?: () => unknown;
 };
 
 export type AIErrorCode = 'rate_limited' | 'unavailable' | 'bad_output' | 'misconfigured' | 'timeout';
@@ -142,7 +144,15 @@ export type GenerateResult<T> = { data: T; ms: number; attempts: number; raw: st
  */
 export async function generateJSON<T>(opts: GenerateOptions<T>): Promise<GenerateResult<T>> {
   const which = opts.provider ?? defaultProvider;
-  const call = which === 'ollama' ? callOllama : callGemini;
+  const call =
+    which === 'ollama'
+      ? callOllama
+      : which === 'mock'
+        ? async (o: GenerateOptions<unknown>) => {
+            if (!o.mock) throw new AIError('misconfigured', 'mock provider has no fixture for this call');
+            return JSON.stringify(o.mock());
+          }
+        : callGemini;
   const started = performance.now();
   let extra = '';
   let lastError = '';
@@ -169,6 +179,7 @@ export async function generateJSON<T>(opts: GenerateOptions<T>): Promise<Generat
 }
 
 export async function checkModel(which: Provider = defaultProvider): Promise<{ reachable: boolean; detail?: string }> {
+  if (which === 'mock') return { reachable: true, detail: 'mock provider (dev only)' };
   if (which === 'ollama') {
     try {
       const res = await fetch(`${env.OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(2500), cache: 'no-store' });
