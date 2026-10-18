@@ -35,10 +35,19 @@ const RULES = [
 const TIPS = [
   'One dark pen on plain or lightly ruled paper. Pencil is too faint.',
   'Draw landscape, roughly 16:9. Keep doodles a thumb-width apart so they read as separate things.',
-  'Put the P on or just above a line, and the goal somewhere reachable. Gemma adds a rescue platform if it is not.',
+  'Put the P on or just above a line, and the goal somewhere reachable. INKPLAY adds a rescue platform if it is not.',
   'Write rules in a corner, away from the level, in short phrases.',
   'Photo: even light, no harsh shadow, the whole page in frame. INKPLAY flattens the angle for you.',
   'No paper? Open the canvas on the Create page and draw with a mouse, a pen tablet or your finger. Same rules apply.',
+] as const;
+
+const ARENA_KEYS = [
+  ['A / D or ← →', 'move'],
+  ['W, ↑ or Space', 'jump, hold to jetpack'],
+  ['autofire', 'aims at the nearest enemy you can see'],
+  ['F', 'autofire off: aim with the mouse, click to fire'],
+  ['G, Q or right-click', 'throw a grenade'],
+  ['R', 'reload'],
 ] as const;
 
 export default function GuidePage() {
@@ -114,12 +123,33 @@ export default function GuidePage() {
       <Heading n={5}>Play</Heading>
       <p className="mt-3 max-w-2xl text-lg text-graphite">Arrows or WASD to move, Space or ↑ to jump. On a phone, use the on-screen buttons.</p>
 
+      <Heading n={6}>Bring friends to the arena</Heading>
+      <p className="mt-3 max-w-2xl text-lg text-graphite">
+        Ink Arena is a jetpack shooter on a map Gemma designs. Pick a name and a scarf colour, start a room and share the code. Give Gemma a theme
+        like “hostel rooftops”, hand it a drawing (zigzags stay spikes) or let it surprise you. No one free? Add up to 8 bots.
+      </p>
+      <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+        {ARENA_KEYS.map(([key, does]) => (
+          <li key={key} className="rounded-[var(--wobble)] border-2 border-dashed border-ink/25 bg-card/70 px-4 py-3">
+            <p className="label">{key}</p>
+            <p className="mt-1 text-graphite">{does}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-4 max-w-2xl text-graphite">
+        Walk over crates for a rifle, flamethrower, chainsaw, rockets, a shield, speed, double jump, endless jet or double damage. Watch for
+        lava, currents, spikes, crumbling floors and monsters. On a phone, turn it sideways for full screen and touch controls.
+      </p>
+
       <div className="mt-12 flex flex-wrap gap-4">
         <Link href="/create" className="btn-game px-6 py-3.5 text-lg">
           Start drawing
         </Link>
         <Link href="/create#samples" className="font-hand link-scrawl self-center text-xl text-ink">
           or try a sample
+        </Link>
+        <Link href="/arena" className="font-hand link-scrawl self-center text-xl text-ink">
+          or open the arena
         </Link>
       </div>
     </section>
