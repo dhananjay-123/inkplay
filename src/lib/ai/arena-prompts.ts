@@ -5,7 +5,7 @@ const RULES = `"rules": [                    // optional, ONLY these kinds
     { "kind": "jetpack_power", "value": number },  // 0.5-2
     { "kind": "fire_rate", "value": number },      // 0.5-2
     { "kind": "bullet_damage", "value": number },  // 0.5-2
-    { "kind": "night_mode" }
+    { "kind": "night_mode" }                       // exactly this, no value
   ]`;
 
 export const ARENA_SYSTEM = `You are INKPLAY's arena designer. You design maps for a 2D multiplayer jetpack shooter (like Mini Militia) drawn in marker on notebook paper.

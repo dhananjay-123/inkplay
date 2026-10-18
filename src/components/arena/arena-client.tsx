@@ -203,7 +203,7 @@ function Room({ net, me, setMe, room, onLeave }: { net: Transport; me: PlayerMet
 
   const broadcastMap = useCallback(() => {
     const c = currentRef.current;
-    if (c) net.send({ t: 'map', map: c.map, from: c.from, round: c.round });
+    if (c) net.send({ t: 'map', map: c.map, from: c.from, round: c.round, note: c.note });
   }, [net]);
 
   // ---------- network: map sync, kills, roster
@@ -216,7 +216,7 @@ function Room({ net, me, setMe, room, onLeave }: { net: Transport; me: PlayerMet
         const cur = currentRef.current;
         if (!map) return;
         const newer = !cur || m.round > cur.round || (m.round === cur.round && m.from < cur.from);
-        if (newer) adopt({ map, round: m.round, from: m.from });
+        if (newer) adopt({ map, round: m.round, from: m.from, note: typeof m.note === 'string' ? m.note.slice(0, 120) : undefined });
       } else if (m.t === 'needmap') {
         if (!currentRef.current) return;
         const asked = performance.now();

@@ -19,7 +19,7 @@ export type Shot = [number, number, number];
 export type NetMsg =
   | { t: 'st'; id: string; x: number; y: number; vx: number; vy: number; aim: number; hp: number; alive: boolean; jet: boolean; shots: Shot[] }
   | { t: 'die'; victim: string; killer: string | null }
-  | { t: 'map'; map: ArenaMap; from: string; round: number }
+  | { t: 'map'; map: ArenaMap; from: string; round: number; note?: string }
   | { t: 'needmap'; from: string }
   | { t: 'pick'; i: number; by: string };
 

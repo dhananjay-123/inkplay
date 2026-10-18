@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         system: ARENA_SYSTEM,
         prompt: arenaThemePrompt(input.theme, seed),
         schema: ArenaFromModel,
-        temperature: 0.9,
+        temperature: 0.7,
         timeoutMs: 45_000,
         mock: () => proceduralDraft(seed),
       });
