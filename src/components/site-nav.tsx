@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Suspense } from 'react';
 
 /* Hand-drawn-feel line icons (inline: no icon font, works offline). */
 const icon = (d: React.ReactNode) => (
@@ -59,9 +60,6 @@ function HeroMark() {
 }
 
 export function SiteNav() {
-  const path = usePathname();
-  const active = (href: string) => path === href || path.startsWith(`${href}/`);
-
   return (
     <header className="relative z-40 flex h-[var(--nav-h)] shrink-0 items-center justify-between gap-3 px-3 sm:px-8">
       <Link href="/" className="group flex items-center gap-2" aria-label="INKPLAY home">
@@ -70,37 +68,47 @@ export function SiteNav() {
           INKPLAY<span className="text-hazard">.</span>
         </span>
       </Link>
-
-      <nav className="flex items-center gap-2 sm:gap-3" aria-label="Main">
-        <ul className="flex items-center gap-0.5 rounded-full border-2 border-ink/80 bg-card p-1 shadow-[3px_3px_0_var(--pop)]">
-          {LINKS.map((l) => {
-            const on = active(l.href);
-            return (
-              <li key={l.href}>
-                <Link
-                  href={l.href}
-                  aria-current={on ? 'page' : undefined}
-                  aria-label={l.label}
-                  className={`label flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors sm:px-3 ${
-                    on ? 'bg-accent text-accent-ink' : 'text-graphite hover:bg-paper-deep hover:text-ink'
-                  }`}
-                >
-                  {l.icon}
-                  <span className="hidden md:inline">{l.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-        <Link
-          href="/create"
-          aria-current={active('/create') ? 'page' : undefined}
-          className="btn-game label px-3 py-2 sm:px-4"
-        >
-          {PencilIcon}
-          <span className="hidden sm:inline">Create</span>
-        </Link>
-      </nav>
+      {/* The URL isn't known while prerendering dynamic routes: render without
+          an active item first, then stream in the highlighted version. */}
+      <Suspense fallback={<NavItems path={null} />}>
+        <ActiveNav />
+      </Suspense>
     </header>
+  );
+}
+
+function ActiveNav() {
+  return <NavItems path={usePathname()} />;
+}
+
+function NavItems({ path }: { path: string | null }) {
+  const active = (href: string) => path !== null && (path === href || path.startsWith(`${href}/`));
+  return (
+    <nav className="flex items-center gap-2 sm:gap-3" aria-label="Main">
+      <ul className="flex items-center gap-0.5 rounded-full border-2 border-ink/80 bg-card p-1 shadow-[3px_3px_0_var(--pop)]">
+        {LINKS.map((l) => {
+          const on = active(l.href);
+          return (
+            <li key={l.href}>
+              <Link
+                href={l.href}
+                aria-current={on ? 'page' : undefined}
+                aria-label={l.label}
+                className={`label flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors sm:px-3 ${
+                  on ? 'bg-accent text-accent-ink' : 'text-graphite hover:bg-paper-deep hover:text-ink'
+                }`}
+              >
+                {l.icon}
+                <span className="hidden md:inline">{l.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      <Link href="/create" aria-current={active('/create') ? 'page' : undefined} className="btn-game label px-3 py-2 sm:px-4">
+        {PencilIcon}
+        <span className="hidden sm:inline">Create</span>
+      </Link>
+    </nav>
   );
 }

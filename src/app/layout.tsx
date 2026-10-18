@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, JetBrains_Mono, Kalam } from 'next/font/google';
 import { InkCursor } from '@/components/ink-cursor';
+import { Magnetic } from '@/components/magnetic';
 import { SiteNav } from '@/components/site-nav';
 import './globals.css';
 
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         <SiteNav />
         <main className="flex flex-1 flex-col">{children}</main>
         <InkCursor />
+        <Magnetic />
       </body>
     </html>
   );

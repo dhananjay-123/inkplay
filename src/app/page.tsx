@@ -2,18 +2,20 @@ import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { DoodleCard } from '@/components/gallery/doodle-card';
+import { Doodle, MarginNote, StepIcon } from '@/components/home/doodles';
 import { HeroDoodle } from '@/components/home/hero-doodle';
 import { IntroFilm } from '@/components/home/intro-film';
 import { Reveal, Scribble } from '@/components/home/reveal';
+import { RulesPlayground } from '@/components/home/rules-playground';
 import { hasSupabase } from '@/lib/env';
 import { listLevels } from '@/lib/supabase/server';
 
 const MEANING = [
-  { drawn: 'cactus', role: 'hazard', note: 'ouch' },
-  { drawn: 'trampoline', role: 'bouncy', note: 'boing' },
-  { drawn: 'cloud', role: 'platform', note: 'surprisingly solid' },
-  { drawn: 'dog', role: 'enemy', note: 'chases you' },
-  { drawn: 'chai cup', role: 'power-up', note: 'obviously' },
+  { drawn: 'cactus', kind: 'cactus', role: 'hazard', note: 'ouch' },
+  { drawn: 'trampoline', kind: 'trampoline', role: 'bouncy', note: 'boing' },
+  { drawn: 'cloud', kind: 'cloud', role: 'platform', note: 'surprisingly solid' },
+  { drawn: 'dog', kind: 'dog', role: 'enemy', note: 'chases you' },
+  { drawn: 'chai cup', kind: 'chai', role: 'power-up', note: 'obviously' },
 ] as const;
 
 const ROLE_CHIP: Record<(typeof MEANING)[number]['role'], string> = {
@@ -24,18 +26,10 @@ const ROLE_CHIP: Record<(typeof MEANING)[number]['role'], string> = {
   'power-up': 'bg-pop text-white',
 };
 
-const RULES = [
-  { written: 'low gravity', becomes: 'gravity × 0.55' },
-  { written: 'enemies get faster', becomes: 'enemy speed ramps over time' },
-  { written: 'coins = speed boost', becomes: 'pickups → player speed × 1.4' },
-  { written: 'boss: angry mess uncle throws rotis', becomes: 'boss fight, projectile = roti' },
-  { written: 'its night', becomes: 'night mode, torch radius' },
-] as const;
-
 const STEPS = [
-  { n: '01', t: 'Draw', d: 'Any paper, any single pen. A line is ground, a zigzag is spikes, P is you. Everything else, Gemma works out.' },
-  { n: '02', t: 'Snap', d: 'Upload or point your camera. OpenCV cleans the page and numbers every mark so Gemma can point at them.' },
-  { n: '03', t: 'Play', d: 'Your own ink becomes the level. Your dog walks, your coins vanish, and Gemma roasts your run at the end.' },
+  { n: '01', icon: 'draw', t: 'Draw', d: 'Any paper, any single pen. A line is ground, a zigzag is spikes, P is you. Everything else, Gemma works out.' },
+  { n: '02', icon: 'snap', t: 'Snap', d: 'Upload or point your camera. OpenCV cleans the page and numbers every mark so Gemma can point at them.' },
+  { n: '03', icon: 'play', t: 'Play', d: 'Your own ink becomes the level. Your dog walks, your coins vanish, and Gemma roasts your run at the end.' },
 ] as const;
 
 export default function Home() {
@@ -84,11 +78,15 @@ export default function Home() {
               <p className="font-hand mt-6 text-lg text-graphite">Learn the legend. Buy the markers. Draw what the app expects.</p>
             </Reveal>
             <Reveal className="rounded-sm bg-card p-6 shadow-[var(--shadow)]">
-              <p className="label text-graphite">inkplay · one pen, no legend</p>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="label text-graphite">inkplay · one pen, no legend</p>
+                <MarginNote arrow="down">hover me</MarginNote>
+              </div>
               <ul className="mt-5 divide-y divide-ink/10">
                 {MEANING.map((m) => (
-                  <li key={m.drawn} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3">
-                    <span className="font-hand w-32 text-2xl">{m.drawn}</span>
+                  <li key={m.drawn} tabIndex={0} className="meaning-row flex flex-wrap items-center gap-x-4 gap-y-1 rounded-sm py-2 outline-none focus-visible:bg-paper-deep">
+                    <Doodle kind={m.kind} />
+                    <span className="font-hand w-28 text-2xl">{m.drawn}</span>
                     <span className="label text-graphite">→</span>
                     <span className={`label rounded-full px-2.5 py-1 ${ROLE_CHIP[m.role]}`}>{m.role}</span>
                     <span className="font-hand ml-auto text-lg text-graphite">{m.note}</span>
@@ -105,30 +103,26 @@ export default function Home() {
         <Reveal>
           <p className="label text-graphite">rules are words</p>
           <h2 className="font-display mt-3 text-4xl font-extrabold tracking-tight sm:text-6xl">Write the rules in the margin.</h2>
+          <MarginNote className="mt-3">try “heavy gravity”, then watch the spikes</MarginNote>
           <p className="mt-4 max-w-2xl text-lg text-graphite">
             Gemma turns handwriting into mechanics, but only from a whitelisted set of rule types with every number clamped on the server.
             Rules are data, never code.
           </p>
         </Reveal>
-        <ol className="mt-12 space-y-4">
-          {RULES.map((r, i) => (
-            <Reveal as="li" key={r.written} className="grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-6">
-              <span className="font-hand text-3xl" style={{ transform: `rotate(${(i % 2 ? 1 : -1) * 1.2}deg)` }}>“{r.written}”</span>
-              <span className="label text-graphite" aria-hidden>
-                ——→
-              </span>
-              <code className="label w-fit rounded-sm border border-ink/15 bg-card px-3 py-2 text-ink">{r.becomes}</code>
-            </Reveal>
-          ))}
-        </ol>
+        <Reveal className="mt-12">
+          <RulesPlayground />
+        </Reveal>
       </section>
 
       {/* -------------------------------------------------------------- steps */}
       <section className="bg-ink text-paper">
         <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-24 sm:px-8 md:grid-cols-3">
           {STEPS.map((s) => (
-            <Reveal key={s.n}>
-              <p className="label text-accent">{s.n}</p>
+            <Reveal key={s.n} className="step">
+              <div className="text-paper">
+                <StepIcon step={s.icon} />
+              </div>
+              <p className="label mt-4 text-accent">{s.n}</p>
               <h3 className="font-display mt-2 text-5xl font-extrabold tracking-tight">{s.t}</h3>
               <p className="mt-4 text-paper/75">{s.d}</p>
             </Reveal>

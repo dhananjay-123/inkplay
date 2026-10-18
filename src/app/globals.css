@@ -123,7 +123,7 @@ body {
   background: var(--accent);
   color: var(--accent-ink);
   box-shadow: 4px 4px 0 var(--pop);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, translate 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .btn-game:hover {
   transform: translate(-2px, -2px);
@@ -313,4 +313,101 @@ body {
 .intro-film [data-hero],
 .intro-film [data-hud] {
   opacity: 0;
+}
+
+/* ------------------------------------------------------------------
+   Living doodles (components/home/doodles.tsx). Rows animate on hover,
+   focus or tap; the chai always steams a little.
+------------------------------------------------------------------- */
+.meaning-row {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.meaning-row:hover {
+  background: color-mix(in srgb, var(--paper-deep) 60%, transparent);
+}
+.doodle-cactus .dd-sway {
+  transform-box: view-box;
+  transform-origin: 41px 52px;
+}
+.meaning-row:is(:hover, :focus-visible, :active) .dd-sway { animation: dd-sway 0.6s ease-in-out 2; }
+.meaning-row:is(:hover, :focus-visible, :active) .dd-spines { animation: dd-bristle 0.3s ease-in-out 4 alternate; }
+@keyframes dd-sway { 0%, 100% { rotate: 0deg; } 30% { rotate: -9deg; } 70% { rotate: 7deg; } }
+@keyframes dd-bristle { to { stroke-width: 3.6; } }
+
+.meaning-row:is(:hover, :focus-visible, :active) .dd-ball { animation: dd-bounce 0.55s cubic-bezier(0.3, 0, 0.7, 1) infinite; }
+.meaning-row:is(:hover, :focus-visible, :active) .dd-mat { animation: dd-mat 0.55s ease-in-out infinite; }
+@keyframes dd-bounce { 0%, 100% { translate: 0 -10px; } 50% { translate: 0 7px; } }
+@keyframes dd-mat { 0%, 40%, 100% { d: path("M14 34 Q 40 34 66 34"); } 50% { d: path("M14 34 Q 40 48 66 34"); } }
+
+.meaning-row:is(:hover, :focus-visible, :active) .dd-drift { animation: dd-drift 1.6s ease-in-out infinite; }
+.meaning-row:is(:hover, :focus-visible, :active) .dd-hop { animation: dd-hop 1.6s ease-in-out infinite; }
+@keyframes dd-drift { 0%, 100% { translate: -4px 0; } 50% { translate: 6px 0; } }
+@keyframes dd-hop { 0%, 100% { translate: -4px 0; } 25% { translate: 1px -9px; } 50% { translate: 6px 0; } 75% { translate: 1px -9px; } }
+
+.doodle-dog .dd-tail {
+  transform-box: view-box;
+  transform-origin: 22px 32px;
+}
+.meaning-row:is(:hover, :focus-visible, :active) .dd-tail { animation: dd-wag 0.18s ease-in-out infinite alternate; }
+.meaning-row:is(:hover, :focus-visible, :active) .dd-trot { animation: dd-trot 0.36s ease-in-out infinite; }
+.meaning-row:is(:hover, :focus-visible, :active) .dd-leg-a { animation: dd-leg 0.36s linear infinite; }
+.meaning-row:is(:hover, :focus-visible, :active) .dd-leg-b { animation: dd-leg 0.36s linear infinite reverse; }
+@keyframes dd-wag { from { rotate: -18deg; } to { rotate: 22deg; } }
+@keyframes dd-trot { 0%, 100% { translate: 0 0; } 50% { translate: 2px -2px; } }
+@keyframes dd-leg { 0%, 100% { translate: -2px 0; } 50% { translate: 2px 0; } }
+
+.dd-steam path {
+  animation: dd-steam 2.4s ease-in-out infinite;
+  opacity: 0.35;
+}
+.dd-steam path:nth-child(2) { animation-delay: 0.4s; }
+.dd-steam path:nth-child(3) { animation-delay: 0.8s; }
+.meaning-row:is(:hover, :focus-visible, :active) .dd-steam path {
+  animation-duration: 0.9s;
+  opacity: 1;
+}
+@keyframes dd-steam { 0% { translate: 0 4px; opacity: 0; } 40% { opacity: 1; } 100% { translate: 0 -8px; opacity: 0; } }
+
+/* Step icons play when their section scrolls in */
+.step-icon .si-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.step[data-in] .si-line { animation: si-draw 1.1s 0.3s cubic-bezier(0.6, 0, 0.3, 1) forwards; }
+.step[data-in] .si-pencil { animation: si-pencil 1.1s 0.3s cubic-bezier(0.6, 0, 0.3, 1) both; }
+@keyframes si-draw { to { stroke-dashoffset: 0; } }
+@keyframes si-pencil { from { translate: -54px 4px; } 30% { translate: -36px -6px; } 60% { translate: -16px 4px; } to { translate: 0 0; } }
+.si-flash {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 0 100%;
+}
+.step[data-in] .si-flash { animation: si-flash 1.8s 0.5s ease-out infinite; }
+@keyframes si-flash { 0%, 100% { opacity: 0; scale: 0.6; } 8% { opacity: 1; scale: 1.15; } 30% { opacity: 0; } }
+.si-btn-a,
+.si-btn-b {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.step[data-in] .si-btn-a { animation: si-press 1.2s 0.4s ease-in-out infinite; }
+.step[data-in] .si-btn-b { animation: si-press 1.2s 1s ease-in-out infinite; }
+@keyframes si-press { 0%, 60%, 100% { scale: 1; } 70% { scale: 0.6; } }
+
+/* Margin notes draw their arrow on reveal */
+.margin-note .mn-path { stroke-dasharray: 1; }
+.reveal .margin-note .mn-path { stroke-dashoffset: 1; }
+.reveal[data-in] .margin-note .mn-path { animation: si-draw 0.7s 0.6s ease-out forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .meaning-row *,
+  .step-icon *,
+  .margin-note * {
+    animation: none !important;
+  }
+  .step-icon .si-line,
+  .reveal .margin-note .mn-path {
+    stroke-dashoffset: 0 !important;
+  }
+  .si-flash { opacity: 1; }
 }
