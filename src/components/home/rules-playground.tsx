@@ -167,8 +167,8 @@ export function RulesPlayground() {
                   aria-pressed={sel}
                   onClick={() => toggle(r.id)}
                   style={{ rotate: `${r.tilt}deg` }}
-                  className={`font-hand rounded-sm border-2 px-3 py-1 text-2xl transition-[background,transform,box-shadow] duration-150 hover:-translate-y-0.5 ${
-                    sel ? 'border-accent-ink bg-accent text-accent-ink shadow-[3px_3px_0_var(--pop)]' : 'border-dashed border-ink/30 text-ink hover:border-ink'
+                  className={`font-hand rounded-[var(--wobble-btn)] border-2 px-4 py-1 text-2xl transition-[background,transform,box-shadow] duration-150 hover:-translate-y-0.5 active:translate-y-0.5 ${
+                    sel ? 'border-ink bg-accent text-accent-ink shadow-[var(--shadow-hard)]' : 'border-dashed border-ink/35 bg-card text-ink hover:border-ink'
                   }`}
                 >
                   {sel ? '✓ ' : ''}
@@ -178,8 +178,8 @@ export function RulesPlayground() {
             );
           })}
         </ul>
-        <div className="mt-6 min-h-[7rem] rounded-sm border border-ink/15 bg-card p-4 font-mono text-xs leading-6 shadow-[var(--shadow)]">
-          <p className="label text-[0.6rem] text-graphite">what Gemma sends the game</p>
+        <div className="sketch-soft mt-6 min-h-[7rem] p-4 font-mono text-xs leading-6">
+          <p className="font-hand text-base text-graphite">what Gemma sends the game:</p>
           <pre className="mt-1 overflow-x-auto whitespace-pre text-ink">
             {active.length ? `"rules": [\n${active.map((r) => `  ${r.json}`).join(',\n')}\n]` : '"rules": []'}
           </pre>
@@ -187,7 +187,7 @@ export function RulesPlayground() {
       </div>
 
       <figure ref={figRef} className="relative">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full overflow-hidden rounded-sm bg-[#FFF7E6] shadow-[var(--shadow)] ring-1 ring-ink/10" role="img" aria-label="A tiny level: the hero runs, jumps a cloud and spikes. Active rules change how it moves.">
+        <svg viewBox={`0 0 ${W} ${H}`} className="sketch w-full overflow-hidden" role="img" aria-label="A tiny level: the hero runs, jumps a cloud and spikes. Active rules change how it moves.">
           <defs>
             <radialGradient id="rp-torch">
               <stop offset="0.55" stopColor="#000" stopOpacity="0" />
@@ -198,37 +198,37 @@ export function RulesPlayground() {
               <circle ref={lightRef} r="95" fill="url(#rp-torch)" />
             </mask>
           </defs>
-          <g transform={flip || undefined} style={{ transition: 'transform .4s' }} fill="none" stroke="#1a1033" strokeLinecap="round" strokeLinejoin="round">
+          <g transform={flip || undefined} style={{ transition: 'transform .4s' }} fill="none" stroke="var(--ink)" strokeLinecap="round" strokeLinejoin="round">
             {/* notebook margin */}
-            <path d="M44 0 V300" stroke="#ff3b5c" strokeOpacity="0.35" strokeWidth="2" />
+            <path d="M44 0 V300" stroke="var(--hazard)" strokeOpacity="0.35" strokeWidth="2" />
             <path d={`M0 ${GROUND} C 120 ${GROUND - 3}, 200 ${GROUND + 3}, ${SPIKES[0]} ${GROUND} M${SPIKES[1]} ${GROUND} C 420 ${GROUND - 4}, 540 ${GROUND + 3}, ${W} ${GROUND}`} strokeWidth="4" />
-            <path d={`M${SPIKES[0]} ${GROUND} l8.5 -20 l8.5 20 l8.5 -20 l8.5 20 l8.5 -20 l8.5 20 l8.5 -20 l8.5 20`} stroke="#ff3b5c" strokeWidth="4" />
+            <path d={`M${SPIKES[0]} ${GROUND} l8.5 -20 l8.5 20 l8.5 -20 l8.5 20 l8.5 -20 l8.5 20 l8.5 -20 l8.5 20`} stroke="var(--hazard)" strokeWidth="4" />
             <path d="M486 150 c-14 0 -20 -16 -6 -22 c0 -18 26 -22 32 -8 c10 -10 30 -4 28 10 c14 2 14 20 0 20 z" strokeWidth="3" />
             <path d="M574 236 L574 168" strokeWidth="3.5" />
-            <path d="M574 168 L606 180 L574 192" fill="#b6ff2e" strokeWidth="3" />
-            <text x="60" y="44" className="font-hand" fontSize="22" fill="#6b5e8c" stroke="none">
+            <path d="M574 168 L606 180 L574 192" fill="var(--accent)" strokeWidth="3" />
+            <text x="60" y="44" className="font-hand" fontSize="22" fill="var(--graphite)" stroke="none">
               {active.length ? active.map((r) => r.text).join(' · ') : 'no rules (boring)'}
             </text>
 
             <g ref={splatRef} opacity="0">
-              <path d="M-26 0 c6 -18 14 -6 18 -20 c4 12 10 -4 14 10 c8 -10 12 2 20 -6 c-2 10 6 12 0 16 z" fill="#1a1033" stroke="none" />
+              <path d="M-26 0 c6 -18 14 -6 18 -20 c4 12 10 -4 14 10 c8 -10 12 2 20 -6 c-2 10 6 12 0 16 z" fill="var(--ink)" stroke="none" />
             </g>
             <g ref={heroRef}>
               <g ref={bodyRef} style={{ transformBox: 'fill-box', transformOrigin: '50% 100%' }}>
                 <path d="M-6 -6 L-7 0 M6 -6 L7 0" strokeWidth="3.5" />
-                <ellipse cy="-24" rx="15" ry="19" fill="#1a1033" stroke="none" />
-                <path d="M-14 -18 L14 -19 L21 -9" stroke="#b6ff2e" strokeWidth="5.5" />
+                <ellipse cy="-24" rx="15" ry="19" fill="var(--ink)" stroke="none" />
+                <path d="M-14 -18 L14 -19 L21 -9" stroke="var(--accent)" strokeWidth="5.5" />
                 <ellipse cx="-5.5" cy="-29" rx="4" ry="5" fill="#fff" stroke="none" />
                 <ellipse cx="5.5" cy="-29" rx="4" ry="5" fill="#fff" stroke="none" />
-                <circle cx="-4" cy="-28" r="2" fill="#1a1033" stroke="none" />
-                <circle cx="7" cy="-28" r="2" fill="#1a1033" stroke="none" />
+                <circle cx="-4" cy="-28" r="2" fill="var(--ink)" stroke="none" />
+                <circle cx="7" cy="-28" r="2" fill="var(--ink)" stroke="none" />
               </g>
             </g>
           </g>
-          {on.has('night') && <rect width={W} height={H} fill="#120a2a" fillOpacity="0.92" mask="url(#rp-night)" />}
+          {on.has('night') && <rect width={W} height={H} fill="#16130f" fillOpacity="0.92" mask="url(#rp-night)" />}
         </svg>
-        <figcaption className="label mt-3 flex justify-between text-[0.6rem] text-graphite">
-          <span>live · same physics as the game, roughly</span>
+        <figcaption className="font-hand mt-3 flex justify-between text-base text-graphite">
+          <span>live, and roughly the same physics as the game</span>
           <span aria-live="polite">splats: {splats}</span>
         </figcaption>
       </figure>

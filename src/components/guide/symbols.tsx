@@ -51,7 +51,7 @@ export function SymbolLegend() {
           <Glyph />
           <span className="leading-tight">
             <span className="font-hand block text-lg">{mark}</span>
-            <span className="label block text-[0.6rem] text-graphite">{becomes}</span>
+            <span className="block text-sm font-semibold text-pop">{becomes}</span>
           </span>
         </li>
       ))}

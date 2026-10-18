@@ -64,6 +64,8 @@ src/
     fixer.ts           post-parse auto-fixer (player, goal, reachability)
     ai/                provider abstraction (gemini | ollama) + prompts
     vision/            OpenCV.js preprocessing, set-of-marks rendering
+    editor/            in-browser level canvas: scene + PNG export,
+                       doodle library, templates/draft in localStorage
     supabase/          server.ts (service role) / client.ts (anon)
     store.ts           Zustand store for the current level
 public/
@@ -75,16 +77,21 @@ supabase/schema.sql    paste into the Supabase SQL editor
 
 ## Design system (summary — full detail in `docs/SPEC.md` §5)
 
-- Concept: **Arcade notebook**. Paper, ink, scribbles, sharp editorial type,
-  plus game-feel: chunky lime buttons, coloured role chips, living doodles.
-- Tokens (`src/app/globals.css`): paper `#FFF7E6`, ink `#1A1033` (violet),
-  graphite `#6B5E8C`, accent lime `#B6FF2E`, hazard `#FF3B5C`, pop violet
-  `#7B5CFF`, sun `#FFC93C`, sky `#2EC5FF`. Dark = "arcade at midnight":
-  paper `#120A2A`, ink `#FFF7E6`, accent unchanged.
-- Anything drawn on top of the (always light) drawing uses fixed tokens that
-  don't flip in dark mode: `--tag-*` for set-of-marks tags; the intro film
-  scopes its own light palette. Text on lime is always `--accent-ink`.
-- Primary buttons: `.btn-game`. `--nav-h` is the nav height; the play
+- Concept: **Sketchbook**. Marker ink on a dotted cream page, highlighter
+  swipes, tape, sticker buttons, blue-ballpoint margin notes, living doodles.
+  Light only, on purpose: the site is the same paper as the drawings.
+- Tokens (`src/app/globals.css`): paper `#FFFAF0`, ink `#1D1B18` (warm
+  marker black, matches the game canvas), graphite `#6E675C`, accent lime
+  `#B6FF2E`, hazard `#FF4A3D`, pop = ballpoint blue `#2D5BFF`, sun
+  `#FFCF3F`, sky `#5CC8FF`, bubble `#FF9EC7`.
+- Hand-drawn shapes come from tokens too: `--wobble` (cards),
+  `--wobble-btn` (buttons/chips), `--shadow-hard` (ink offset shadow).
+  Helpers: `.sketch`, `.sketch-soft`, `.tape` (+ `.tape-pink/-blue`),
+  `.circled`, `.highlight`, `.link-scrawl`.
+- `--tag-*` colour set-of-marks tags. Text on lime is always `--accent-ink`.
+- Mono `.label` is for HUD/stats/code only, not eyebrows over headings.
+  Avoid em dashes and slogan-style copy in the UI.
+- Primary buttons: `.btn-game`; secondary: `.btn-ghost` (add `.btn-sm` in tight spots). `--nav-h` is the nav height; the play
   screen is exactly `100dvh - --nav-h`.
 - Fonts via `next/font`: Bricolage Grotesque (display), Kalam (handwriting /
   Gemma's voice), JetBrains Mono (labels/HUD, uppercase, tracked).

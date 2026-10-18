@@ -82,9 +82,9 @@ export function StepIcon({ step }: { step: 'draw' | 'snap' | 'play' }) {
   if (step === 'draw')
     return (
       <svg viewBox="0 0 96 64" className="step-icon step-draw h-16 w-24" aria-hidden>
-        <path className="si-line" pathLength={1} d="M6 50 C 20 36, 30 58, 44 44 S 66 34, 72 46" {...s} stroke="var(--accent)" />
+        <path className="si-line" pathLength={1} d="M6 50 C 20 36, 30 58, 44 44 S 66 34, 72 46" {...s} stroke="var(--pop)" />
         <g className="si-pencil" {...s}>
-          <path d="M60 46 L84 14 l8 6 L68 52 z" fill="var(--paper)" />
+          <path d="M60 46 L84 14 l8 6 L68 52 z" fill="var(--sun)" />
           <path d="M60 46 l-2 10 l10 -4" />
           <path d="M80 19 l8 6" />
         </g>
@@ -99,7 +99,7 @@ export function StepIcon({ step }: { step: 'draw' | 'snap' | 'play' }) {
           <circle cx="45" cy="38" r="11" />
           <circle cx="45" cy="38" r="4" fill="currentColor" />
         </g>
-        <g className="si-flash" stroke="var(--sun)" strokeWidth="3.5" strokeLinecap="round">
+        <g className="si-flash" stroke="var(--hazard)" strokeWidth="3.5" strokeLinecap="round">
           <path d="M84 12 l8 -6 M86 22 h9 M80 4 l2 -4" />
         </g>
       </svg>
@@ -111,7 +111,7 @@ export function StepIcon({ step }: { step: 'draw' | 'snap' | 'play' }) {
         <path d="M28 30 v12 M22 36 h12" />
       </g>
       <circle className="si-btn-a" cx="64" cy="31" r="4.5" fill="var(--hazard)" />
-      <circle className="si-btn-b" cx="72" cy="39" r="4.5" fill="var(--accent)" />
+      <circle className="si-btn-b" cx="72" cy="39" r="4.5" fill="var(--sky)" />
     </svg>
   );
 }

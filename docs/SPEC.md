@@ -89,8 +89,10 @@ NEXT_PUBLIC_INTRO_VIDEO=0
 
 ### 3.1 Client preprocessing (`src/lib/vision/`, OpenCV.js)
 
-1. Input: upload, phone camera (`accept="image/*" capture="environment"`) or
-   webcam (`getUserMedia`).
+1. Input: a photo uploaded from the device, a sample, or a level drawn in
+   the browser canvas (`src/lib/editor/`), which exports a 1600×900
+   ink-on-paper PNG and takes the same route. Camera/webcam capture was
+   removed (D17).
 2. Detect paper (largest 4-point contour) → perspective-warp to 16:9.
    Fallback: center-crop the full image to 16:9.
 3. Clean: grayscale → adaptive threshold → morphological close. Produce
@@ -251,7 +253,9 @@ motion and without JS. The original plan below is kept for reference.
    →", `/api/health` status pill); "They read colours. We read meaning."
    pinned horizontal compare; "Write the rules" scrub; Draw / Snap / Play;
    "Runs offline"; Hall of Doodles preview (hidden without Supabase); footer.
-2. **`/create`** — torn-page drop zone; Upload / Camera / Try a sample (5);
+2. **`/create`** — two ways in: draw on the canvas (pen, line, eraser,
+   drag-in doodles, rules, imported pictures, undo, templates saved in the
+   browser) or upload a photo; templates shelf; Try a sample (5);
    cheat sheet; set-of-marks reveal with labels typing in
    ("#3 cactus → hazard"); witty loading lines; "Gemma read these rules";
    "Play it →".
@@ -314,7 +318,7 @@ Phase 2. Check `/api/parse` latency against `maxDuration`.
 ## 9. Definition of done
 
 - `pnpm build` passes, zero type errors.
-- All 5 samples work on Vercel (webcam on a phone) **and** offline with Ollama.
+- All 5 samples and a canvas-drawn level work on Vercel **and** offline with Ollama.
 - Works with all Supabase env removed.
 - A handwritten rule visibly changes gameplay.
 - An open-vocabulary doodle (e.g. cactus) becomes the right role.

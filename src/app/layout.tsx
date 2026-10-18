@@ -11,16 +11,15 @@ const kalam = Kalam({ variable: '--font-kalam', weight: ['300', '400', '700'], s
 const jetbrains = JetBrains_Mono({ variable: '--font-jetbrains', subsets: ['latin'], display: 'swap' });
 
 export const metadata: Metadata = {
-  title: { default: 'INKPLAY — Draw it. Write the rules. Play it.', template: '%s · INKPLAY' },
+  title: { default: 'INKPLAY · Draw it. Write the rules. Play it.', template: '%s · INKPLAY' },
   description:
-    'Draw a level on paper, write the rules in plain words, snap a photo. Gemma 4 turns it into a playable platformer — in the cloud or fully offline.',
+    'Draw a level on paper, write the rules in plain words, snap a photo. Gemma 4 turns it into a platformer you can play, in the cloud or fully offline.',
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FFF7E6' },
-    { media: '(prefers-color-scheme: dark)', color: '#120A2A' },
-  ],
+  // Light only, on purpose: the site is the same cream paper as the drawings.
+  themeColor: '#FFFAF0',
+  colorScheme: 'light',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

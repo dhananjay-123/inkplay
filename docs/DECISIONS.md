@@ -128,3 +128,26 @@ decision, why.
   loads; cursor renders only while moving (1× canvas), magnetic buttons
   use cached rects; the playground pauses off-screen; OpenCV and samples
   are cached for a day.
+
+### D16 — Sketchbook look, light only
+- **Context:** the violet "arcade notebook" theme read as generic and
+  template-made: violet offset shadows, mono uppercase eyebrows over every
+  heading, numbered steps on a dark band.
+- **Decision:** warm marker-black ink (same family as the game canvas),
+  dotted cream paper, hand-drawn corners, tape, sticker buttons with ink
+  shadows, blue-ballpoint margin notes, torn-paper section edges. Dark mode
+  removed. Favicon is the ink hero on a lime tile (`src/app/icon.svg`, plus
+  generated `favicon.ico` and `apple-icon.png`).
+- **Why:** it should feel like the paper you drew on, and a single theme
+  means the drawings, the game and the site always match.
+
+### D17 — Draw in the browser; no camera capture
+- **Decision:** `/create` offers two inputs: a drawing canvas and photo
+  upload. The canvas exports a 1600×900 single-ink PNG (same size and look
+  as the samples) and goes through the unchanged OpenCV → Gemma pipeline.
+  Templates and the working draft are kept in localStorage. Camera and
+  webcam capture are gone.
+- **Why:** people without paper or a good camera can still play, the
+  server and model never need to know where the picture came from, and
+  templates need no account or database (golden rule).
+

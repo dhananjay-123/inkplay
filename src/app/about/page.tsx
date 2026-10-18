@@ -20,19 +20,20 @@ const HONEST = [
 export default function AboutPage() {
   return (
     <section className="mx-auto w-full max-w-5xl px-4 py-16 sm:px-8">
-      <p className="label text-graphite">about</p>
-      <h1 className="font-display mt-3 text-5xl font-extrabold tracking-tight sm:text-7xl">How INKPLAY works</h1>
-      <p className="font-hand mt-4 max-w-2xl text-xl text-graphite">
+      <h1 className="font-display text-5xl font-extrabold tracking-tight sm:text-7xl">
+        How INKPLAY <span className="highlight">works</span>
+      </h1>
+      <p className="mt-4 max-w-2xl text-lg text-graphite">
         OpenCV does the geometry. Gemma does the understanding. Your pen does everything else.
       </p>
 
       <ol className="mt-14 space-y-0">
         {PIPELINE.map((s, i) => (
-          <li key={s.where} className="relative grid gap-2 border-l-2 border-dashed border-ink/25 pb-10 pl-8 sm:grid-cols-[180px_1fr]">
-            <span className="absolute top-0 -left-[13px] grid h-6 w-6 place-items-center rounded-full bg-ink font-mono text-[0.65rem] text-paper">{i + 1}</span>
+          <li key={s.where} className="relative grid gap-2 border-l-[3px] border-dashed border-ink/25 pb-10 pl-10 last:border-transparent sm:grid-cols-[190px_1fr]">
+            <span className="circled font-hand absolute -top-1 -left-[20px] h-9 w-9 bg-paper text-lg text-pop">{i + 1}</span>
             <div>
               <p className="font-display text-xl font-bold">{s.where}</p>
-              <p className="label mt-1 text-[0.6rem] text-graphite">{s.tag}</p>
+              <p className="font-hand mt-0.5 text-base text-graphite">{s.tag}</p>
             </div>
             <p className="text-lg">{s.what}</p>
           </li>
@@ -46,7 +47,7 @@ export default function AboutPage() {
       </p>
 
       <h2 className="font-display mt-16 text-3xl font-extrabold tracking-tight sm:text-5xl">Honest answers</h2>
-      <dl className="mt-6 divide-y divide-ink/10 border-y border-ink/10">
+      <dl className="mt-6 divide-y-2 divide-dashed divide-ink/10 border-y-2 border-dashed border-ink/10">
         {HONEST.map((h) => (
           <div key={h.q} className="grid gap-2 py-5 sm:grid-cols-[260px_1fr]">
             <dt className="font-hand text-2xl">{h.q}</dt>
@@ -61,8 +62,8 @@ export default function AboutPage() {
         Mono. Built for Hacktoberfest Hack Day Gwalior × ABV-IIITM IEEE.
       </p>
 
-      <Link href="/create" className="label mt-12 btn-game px-6 py-4">
-        Start drawing →
+      <Link href="/create" className="btn-game mt-12 px-6 py-3.5 text-lg">
+        Start drawing
       </Link>
     </section>
   );
