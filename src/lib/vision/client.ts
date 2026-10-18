@@ -89,6 +89,9 @@ export async function processImage(source: Blob | HTMLVideoElement | HTMLImageEl
   const s = Math.min(1, MAX_INPUT / Math.max(bmp.width, bmp.height));
   const input = canvasOf(Math.round(bmp.width * s), Math.round(bmp.height * s));
   const ictx = input.getContext('2d', { willReadFrequently: true })!;
+  // Transparent PNGs (drawing apps) would otherwise read as black paper.
+  ictx.fillStyle = '#ffffff';
+  ictx.fillRect(0, 0, input.width, input.height);
   ictx.drawImage(bmp, 0, 0, input.width, input.height);
   bmp.close();
   const img = ictx.getImageData(0, 0, input.width, input.height);

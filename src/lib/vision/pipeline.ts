@@ -88,24 +88,79 @@ function warpPaper(cv: CV, rgba: CVTypes.Mat, keep: Keep): { warped: CVTypes.Mat
     cv.warpPerspective(rgba, warped, M, dsize, cv.INTER_LINEAR, cv.BORDER_REPLICATE);
     return { warped, detected: true };
   }
-  // Fallback: center-crop to 16:9.
-  const target = 16 / 9;
-  let w = rgba.cols;
-  let h = rgba.rows;
-  if (w / h > target) w = Math.round(h * target);
-  else h = Math.round(w / target);
-  const roi = rgba.roi(new cv.Rect(Math.round((rgba.cols - w) / 2), Math.round((rgba.rows - h) / 2), w, h));
-  keep(roi);
-  cv.resize(roi, warped, dsize, 0, 0, cv.INTER_AREA);
+  // Fallback: fit the whole frame into 16:9 and pad with paper colour, so a
+  // wide or tall page never loses its edges (a crop cut off the P or the goal).
+  const s = Math.min(OUT_W / rgba.cols, OUT_H / rgba.rows);
+  const w = Math.min(OUT_W, Math.round(rgba.cols * s));
+  const h = Math.min(OUT_H, Math.round(rgba.rows * s));
+  const fitted = keep(new cv.Mat());
+  cv.resize(rgba, fitted, new cv.Size(w, h), 0, 0, s < 1 ? cv.INTER_AREA : cv.INTER_LINEAR);
+  const top = Math.floor((OUT_H - h) / 2);
+  const left = Math.floor((OUT_W - w) / 2);
+  cv.copyMakeBorder(fitted, warped, top, OUT_H - h - top, left, OUT_W - w - left, cv.BORDER_CONSTANT, paperColour(cv, rgba, keep));
   return { warped, detected: false };
 }
 
-/** Largest bright 4-point contour covering ≥20% of the frame, ordered TL,TR,BR,BL. */
+/** Mean colour of the brightest frame border: the best guess at the paper. */
+function paperColour(cv: CV, rgba: CVTypes.Mat, keep: Keep): CVTypes.Scalar {
+  let best = [255, 255, 255, 255];
+  let bestL = -1;
+  for (const r of borderRects(cv, rgba.cols, rgba.rows)) {
+    const roi = keep(rgba.roi(r));
+    const m = cv.mean(roi);
+    const l = m[0] + m[1] + m[2];
+    if (l > bestL) {
+      bestL = l;
+      best = [m[0], m[1], m[2], 255];
+    }
+  }
+  return new cv.Scalar(best[0], best[1], best[2], best[3]);
+}
+
+/** Thin strips along the four frame edges (top, right, bottom, left). */
+function borderRects(cv: CV, w: number, h: number): CVTypes.Rect[] {
+  const t = Math.max(2, Math.round(Math.min(w, h) * 0.02));
+  return [new cv.Rect(0, 0, w, t), new cv.Rect(w - t, 0, t, h), new cv.Rect(0, h - t, w, t), new cv.Rect(0, 0, t, h)];
+}
+
+/**
+ * Largest 4-point contour covering ≥20% of the frame that actually looks like
+ * a sheet, ordered TL,TR,BR,BL. Null when the page fills the frame (scans,
+ * screenshots, digital drawings) or nothing sheet-like is found.
+ */
 function findPaperQuad(cv: CV, rgba: CVTypes.Mat, keep: Keep): [number, number][] | null {
   const gray = keep(new cv.Mat());
   cv.cvtColor(rgba, gray, cv.COLOR_RGBA2GRAY);
   cv.GaussianBlur(gray, gray, new cv.Size(7, 7), 0);
   const frameArea = rgba.cols * rgba.rows;
+
+  // Bright on ≥3 borders → the paper runs off the frame; there is no edge to find.
+  const brightBorders = borderRects(cv, gray.cols, gray.rows).filter((r) => cv.mean(keep(gray.roi(r)))[0] > 190).length;
+  if (brightBorders >= 3) return null;
+
+  // Real sheet edges coincide with image edges; the hull of a big ink blob
+  // mostly runs across blank paper.
+  const edgeMap = keep(new cv.Mat());
+  cv.Canny(gray, edgeMap, 40, 120);
+  const k9 = keep(cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(9, 9)));
+  cv.dilate(edgeMap, edgeMap, k9);
+  const sideCoverage = (a: [number, number], b: [number, number]) => {
+    const N = 48;
+    let hit = 0;
+    for (let i = 0; i <= N; i++) {
+      const x = Math.round(a[0] + ((b[0] - a[0]) * i) / N);
+      const y = Math.round(a[1] + ((b[1] - a[1]) * i) / N);
+      if (x >= 0 && y >= 0 && x < edgeMap.cols && y < edgeMap.rows && edgeMap.ucharAt(y, x) > 0) hit++;
+    }
+    return hit / (N + 1);
+  };
+  const looksLikeSheet = (q: [number, number][]) => {
+    const d = (p: [number, number], r: [number, number]) => Math.hypot(p[0] - r[0], p[1] - r[1]);
+    const [tl, tr, br, bl] = q;
+    const ratio = (d(tl, tr) + d(bl, br)) / Math.max(1, d(tl, bl) + d(tr, br));
+    if (ratio < 0.45 || ratio > 2.4) return false;
+    return [sideCoverage(tl, tr), sideCoverage(tr, br), sideCoverage(br, bl), sideCoverage(bl, tl)].every((c) => c >= 0.6);
+  };
 
   const tryMask = (bin: CVTypes.Mat): [number, number][] | null => {
     const contours = keep(new cv.MatVector());
@@ -126,7 +181,9 @@ function findPaperQuad(cv: CV, rgba: CVTypes.Mat, keep: Keep): [number, number][
       if (approx.rows !== 4) continue;
       const pts: [number, number][] = [];
       for (let j = 0; j < 4; j++) pts.push([approx.data32S[j * 2], approx.data32S[j * 2 + 1]]);
-      best = orderCorners(pts);
+      const q = orderCorners(pts);
+      if (!looksLikeSheet(q)) continue;
+      best = q;
       bestArea = area;
     }
     return best;
@@ -322,7 +379,10 @@ function absorbEdges(
     const touchesLeft = spans.some(([a]) => a <= lx + lw * 0.2);
     const touchesRight = spans.some(([, b]) => b >= lx + lw * 0.8);
     const shortEdge = lw < OUT_W * 0.15 && touchesLeft && touchesRight;
-    if (covered >= lw * 0.75 || shortEdge) out.add(l);
+    // A line spanning a big chunk of the page is ground, even when a long
+    // zigzag or hill runs along it (it would swallow the P standing on it).
+    const edgeSized = lw < OUT_W * 0.3;
+    if ((edgeSized && covered >= lw * 0.75) || shortEdge) out.add(l);
   }
   void nObj;
   return out;
