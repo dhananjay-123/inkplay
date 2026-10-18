@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   }
   const parsed = ParseRequestSchema.safeParse(body);
   if (!parsed.success) return err(400, 'bad_request', 'That drawing got lost in the post.');
-  const { somImage, cleanImage, marks } = parsed.data;
+  const { somImage, cleanImage, marks, title } = parsed.data;
 
   const t0 = performance.now();
   try {
@@ -48,6 +48,7 @@ export async function POST(req: Request) {
       mock: () => mockLevel(marks),
     });
     const level = fixLevel(reconcileLabels(res.data, marks), marks);
+    if (title) level.title = title;
     // Saving is best-effort and never fails the request.
     const id = await saveLevel(level, marks, cleanImage);
     const ms = Math.round(performance.now() - t0);
