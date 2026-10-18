@@ -99,3 +99,32 @@ decision, why.
   flat-bar top becomes a trampoline (bouncy).
 - **Why:** deterministic, explainable, and it fixed both directions:
   spikes 3/3 on samples 01/04/05, trampoline 3/3 on sample 02.
+
+### D13 — Digital drawings: guard the paper detector, letterbox, drop frames
+- **Context:** screenshots from drawing apps (no paper edge) were warped
+  using the hull of a long ink band as "the sheet" (10× vertical stretch);
+  canvas borders and sloped hills glued the P to everything else.
+- **Decision:** white-fill uploads (transparent PNGs read as black); skip
+  paper detection when ≥3 frame borders are bright; accept a quad only if
+  it's sheet-shaped (aspect 0.45–2.4) and its sides lie on real edges; no
+  paper → letterbox to 16:9 in paper colour (never crop). Drop long thin
+  strips hugging the frame. Ground detection also opens at ±15°/±30°, and
+  lines wider than 30% of the page are never absorbed into a doodle;
+  strokes whose top edge keeps flipping (zigzags) are not ground.
+- **Why:** the user's own drawings broke; samples kept identical marks.
+
+### D14 — Intro film in code, not a video file
+- **Decision:** GSAP timeline over inline SVG instead of `/intro.mp4`.
+- **Why:** sharp at any size, a few KB, offline, themable, and the hero is
+  the same character as in the game. Ctrl+Shift+R is the browser's hard
+  reload and can't be intercepted, so "replay" = every full page load.
+
+### D15 — Latency on Vercel is network, so hide it
+- **Context:** fine on localhost, sluggish clicks in production. Pages come
+  from Vercel's cache in 0.2–0.3 s; the real stall was Phaser (~315 KB gz)
+  fetched only after "Play it", plus a cursor canvas repainting every frame.
+- **Decision:** preload Phaser while idle on `/create`, prefetch the play
+  route once Gemma answers, `useLinkStatus` wiggle on nav icons while a page
+  loads; cursor renders only while moving (1× canvas), magnetic buttons
+  use cached rects; the playground pauses off-screen; OpenCV and samples
+  are cached for a day.

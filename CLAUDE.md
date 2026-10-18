@@ -25,14 +25,17 @@ in [`docs/DECISIONS.md`](docs/DECISIONS.md).
    code. Server-only modules start with `import 'server-only'`.
 6. **Model IDs are never invented.** They come from env
    (`GEMMA_CLOUD_MODEL`, `OLLAMA_MODEL`).
-7. **Offline first.** Fonts, sounds, OpenCV.js, textures and samples are
-   self-hosted in `/public` or bundled. The app must run in airplane mode
+7. **Offline first.** Fonts, OpenCV.js, textures and samples are self-hosted
+   in `/public` or bundled; sounds are synthesized (Web Audio). The app
+   must run in airplane mode
    with `MODEL_PROVIDER=ollama`.
 8. **Verify uncertain behaviour with a small script first** (API shapes,
    provider quirks), then build on what you saw.
 9. **Golden rule:** draw → parse → play → review must work with **no
    Supabase at all**. Supabase is the gallery only, always best-effort.
-10. **Rules are data, never code.** The model may only pick from the
+10. **Commit often, push once.** Every push to `main` is a Vercel production
+    deploy. Batch the work, run `pnpm build` locally, then push a single time.
+11. **Rules are data, never code.** The model may only pick from the
     whitelisted `Rule` union in `src/lib/schema.ts`. All numbers are clamped
     server-side.
 
@@ -52,7 +55,8 @@ in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 ```
 src/
   app/                 routes (App Router) + api/ route handlers
-  components/          React UI (design layer)
+  components/          React UI (design layer): home/ (intro film, playground,
+                       doodles), create/, game/, gallery/, guide/, nav, cursor
   game/                Phaser 3 scenes, client-only
   lib/
     env.ts             Zod-validated env, provider + hasSupabase flags
@@ -65,17 +69,23 @@ src/
 public/
   opencv/opencv.js     self-hosted
   samples/             5 sample drawings
-  sounds/              tiny self-hosted sfx
 scripts/test-model.ts  Phase 1 smoke test
 supabase/schema.sql    paste into the Supabase SQL editor
 ```
 
 ## Design system (summary — full detail in `docs/SPEC.md` §5)
 
-- Concept: **Living Notebook**. Paper, ink, scribbles + sharp editorial type.
-- Tokens: paper `#F3EEE3`, ink `#141414`, graphite `#6B6760`,
-  accent highlighter `#C6FF3D` (sparingly), hazard `#FF4A1C`.
-  Dark = "blueprint at night", bg `#0E0F12`, ink off-white, accent unchanged.
+- Concept: **Arcade notebook**. Paper, ink, scribbles, sharp editorial type,
+  plus game-feel: chunky lime buttons, coloured role chips, living doodles.
+- Tokens (`src/app/globals.css`): paper `#FFF7E6`, ink `#1A1033` (violet),
+  graphite `#6B5E8C`, accent lime `#B6FF2E`, hazard `#FF3B5C`, pop violet
+  `#7B5CFF`, sun `#FFC93C`, sky `#2EC5FF`. Dark = "arcade at midnight":
+  paper `#120A2A`, ink `#FFF7E6`, accent unchanged.
+- Anything drawn on top of the (always light) drawing uses fixed tokens that
+  don't flip in dark mode: `--tag-*` for set-of-marks tags; the intro film
+  scopes its own light palette. Text on lime is always `--accent-ink`.
+- Primary buttons: `.btn-game`. `--nav-h` is the nav height; the play
+  screen is exactly `100dvh - --nav-h`.
 - Fonts via `next/font`: Bricolage Grotesque (display), Kalam (handwriting /
   Gemma's voice), JetBrains Mono (labels/HUD, uppercase, tracked).
 - Respect `prefers-reduced-motion` everywhere.

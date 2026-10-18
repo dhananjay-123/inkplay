@@ -225,7 +225,15 @@ Tokens and fonts: see `CLAUDE.md`.
 - Reduced motion: no trail, reveals → fades, skip intro.
 - 60 fps target; lazy OpenCV/Phaser; Lighthouse perf ≥ 85 on `/`.
 
-### 5.1 Intro film (code-driven, ~5–6 s, skippable, first visit only)
+### 5.1 Intro film (code-driven, ~7.5 s, skippable)
+
+**As built** (`src/components/home/intro-film.tsx`): plays on every full load
+of `/` (first visit, reload, Ctrl+Shift+R), never on client-side navigation
+back home. The level draws itself; the hero jumps spikes, grabs 3 coins
+(live counter), stomps a walker, flips over a bat, hits the star; wordmark
+stamps in; page wipes away. Any key / click / wheel skips. Off under reduced
+motion and without JS. The original plan below is kept for reference.
+
 
 1. Blank paper; nib draws a wobbly line, zigzag, **P**, star.
 2. Kalam margin note writes "low gravity".
@@ -253,6 +261,14 @@ Tokens and fonts: see `CLAUDE.md`.
    "The gallery is offline. The game isn't."
 5. **`/about`** — architecture diagram, why open models, honest comparison,
    credits.
+6. **`/guide`** — every symbol with a drawn glyph, open-vocabulary examples,
+   every writable rule, photo tips, controls. A compact legend also sits on
+   `/create`.
+
+As built, `/` also has a **rules playground** (toggle handwritten rules,
+watch a tiny level's physics change, see the JSON) and **living doodles**
+(cactus/trampoline/cloud/dog/chai animate on hover). The model status pill
+was removed.
 
 ---
 

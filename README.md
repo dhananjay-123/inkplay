@@ -8,6 +8,8 @@ margin in plain words, and snap a photo. **Gemma 4** works out what you
 level. It runs in the cloud, or fully offline on a laptop with Gemma 4 E4B
 through Ollama.
 
+**Live:** https://inkplay-lemon.vercel.app · **Code:** https://github.com/dhananjay-123/hacktober-fest-Inkplay
+
 Built for **Hacktoberfest Hack Day Gwalior × ABV-IIITM IEEE**, for the tracks
 *Best Open-Source AI Project* and *Best Use of Gemma 4*. MIT licensed.
 
@@ -36,6 +38,23 @@ drawing your idea.
 
 One pen, no legend. Your actual strokes become the level: the hero runs on
 your lines, and the dog you drew walks around.
+
+Photos of paper and **digital drawings** (screenshots, PNGs from drawing
+apps) both work.
+
+## On the site
+
+- **Intro film:** the level draws itself and our hero runs it (spikes, coins,
+  a stomped enemy, a double jump over a bat, the star). Skippable.
+- **Rules playground:** toggle handwritten rules (low gravity, heavy gravity,
+  super speed, upside down, night, mirror) on a live mini-level and see the
+  exact JSON rules Gemma would send the game.
+- **Set-of-marks reveal:** every mark boxed and numbered, then Gemma's label
+  types in next to it (`#3 cactus → hazard`).
+- **`/guide`:** what each symbol means, what you can just draw, every rule
+  you can write.
+- **Play:** HUD with coin tracker, one-screen layout, touch controls on
+  phones, Gemma's review on the end card.
 
 ## Gemma's four jobs
 
@@ -92,11 +111,17 @@ best-effort with a timeout.
 
 | Provider | Model | Parse | Notes |
 |---|---|---|---|
-| Gemini API | `gemma-4-26b-a4b-it` | 10–31 s, median ≈ 13 s | thinking `MINIMAL`, native system instruction, 2 images. Correct player/goal/hazard/enemy/rules on all 5 samples |
+| Gemini API | `gemma-4-26b-a4b-it` | ≈ 11 s typical (10–31 s range); 20–26 s in the browser | thinking `MINIMAL`, native system instruction, 2 images. Correct player/goal/hazard/enemy/rules on all 5 samples |
 | Ollama (laptop, RTX 4060) | `gemma4:e4b` | 15–16 s, up to ≈ 44 s when a malformed reply is retried | fully offline; player, goal and rules right on all 5 samples |
 
 Setting thinking to `MINIMAL` made calls 2–3× faster with no accuracy loss.
 Details are in [`docs/DECISIONS.md`](docs/DECISIONS.md).
+
+**Measurements over guesses.** Where Gemma wavered (a hatched trampoline vs
+spikes), the vision step measures the shape: a mark whose top edge swings
+fully up and down again and again is tagged `zigzag` in the prompt, and a
+"spikes" label on a flat bar that isn't a zigzag becomes a trampoline. That
+took the trampoline to 3/3 without breaking real spikes (D12).
 
 ## Run it
 
@@ -159,7 +184,7 @@ only, never for demos.
 | `pnpm build` / `pnpm start` | production build / serve |
 | `pnpm demo` | production server with `MODEL_PROVIDER=ollama` |
 | `pnpm test:model` | smoke-test the configured provider on a sample |
-| `pnpm test:vision` | headless OpenCV run on all 5 samples → `.out/` |
+| `pnpm test:vision [files…]` | headless OpenCV run on the samples (or given JPEGs) → `.out/` |
 | `pnpm typecheck` | `tsc --noEmit` |
 
 ## Drawing tips
@@ -176,7 +201,7 @@ only, never for demos.
 | words | rules |
 
 Use a dark pen on plain or lightly ruled paper, and keep the whole page in
-the photo.
+the photo. The full illustrated guide is at `/guide`.
 
 ## Safety
 
