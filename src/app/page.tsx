@@ -43,7 +43,7 @@ export default function Home() {
     <>
       <IntroFilm />
       {/* ---------------------------------------------------------- hero */}
-      <section className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-4 pt-10 pb-20 sm:px-8 lg:grid-cols-[1.1fr_1fr]">
+      <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-8 pb-14 sm:px-8 lg:grid-cols-[1.1fr_1fr] lg:pt-12 lg:pb-16">
         <div>
           <h1 className="font-display text-[clamp(4rem,14vw,10.5rem)] leading-[0.85] font-extrabold tracking-[-0.04em]">INKPLAY</h1>
           <p className="font-display mt-6 max-w-xl text-2xl sm:text-3xl">

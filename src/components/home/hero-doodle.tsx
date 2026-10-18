@@ -22,7 +22,7 @@ export function HeroDoodle() {
         </g>
         {/* margin rule, highlighter underneath */}
         <path className="hd-draw hd-6" pathLength={1} strokeWidth="14" stroke="var(--accent)" strokeOpacity="0.9" d="M296 50 L462 38" />
-        <text x="300" y="58" className="hd-note font-hand" fill="var(--ink)" stroke="none" fontSize="30" transform="rotate(-4 300 58)">
+        <text x="300" y="58" className="hd-note font-hand" fill="var(--accent-ink)" stroke="none" fontSize="30" transform="rotate(-4 300 58)">
           low gravity
         </text>
         {/* dotted jump arc */}
