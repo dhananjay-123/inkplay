@@ -8,7 +8,11 @@ margin in plain words, and snap a photo. **Gemma 4** works out what you
 level. It runs in the cloud, or fully offline on a laptop with Gemma 4 E4B
 through Ollama.
 
-**Live:** https://inkplay-lemon.vercel.app · **Code:** https://github.com/dhananjay-123/hacktober-fest-Inkplay
+There's also **Ink Arena** (`/arena`): a Mini Militia-style multiplayer
+shooter where Gemma designs the map from a theme, from your drawing, or on
+its own, and friends join with a room code.
+
+**Live:** https://inkplay-lemon.vercel.app · **Code:** https://github.com/dhananjay-123/inkplay
 
 Built for **Hacktoberfest Hack Day Gwalior × ABV-IIITM IEEE**, for the tracks
 *Best Open-Source AI Project* and *Best Use of Gemma 4*. MIT licensed.
@@ -56,7 +60,43 @@ apps) both work.
 - **Play:** HUD with coin tracker, one-screen layout, touch controls on
   phones, Gemma's review on the end card.
 
-## Gemma's four jobs
+## Ink Arena (multiplayer)
+
+`/arena` turns the same sketchbook into a jetpack shooter for several players
+at once.
+
+- **Join:** pick a name and a scarf colour, then start a room or type a
+  room code. Share the invite link. No account needed.
+- **Maps by Gemma:** from a theme ("hostel rooftops"), from a sample or
+  uploaded drawing (zigzags become spikes, the rest of the page is filled
+  in the same style), or "surprise me". A seeded procedural map is always
+  the fallback, so a room never waits on the model.
+- **Map maker options:** number of monsters and AI bots, how many pickups,
+  and which weapons, buffs and hazards to include. Gemma gets them as
+  constraints and the server enforces them.
+- **Play:** jump and jetpack (W/Space), autofire that aims for you (F to aim
+  with the mouse), grenades (G or right-click), and crates with a rifle,
+  flamethrower, chainsaw, rockets, shield, speed, double jump, endless jet
+  and double damage.
+- **The map:** lava, water currents, spikes and crumbling floors; walker,
+  flyer and turret monsters that respawn at random spots; a live minimap.
+- **AI bots:** add 0 to 8 with **- bots N +**. They fly, dodge lava and
+  shoot players, monsters and each other. Good for solo play and demos.
+- **Anywhere:** full screen on PC; on phones it goes full screen in
+  landscape with touch controls.
+
+**How the multiplayer works.** Vercel functions can't hold websockets, so
+rooms run on a **Supabase Realtime** channel per room: broadcast for game
+traffic and presence for the roster. Each client simulates its own player
+and sends its state 10 times a second; others draw it 150 ms behind,
+interpolated using the sender's clock. The player who gets hit decides the
+hit. The earliest joiner still playing runs the monsters and bots. A
+watchdog rebuilds the connection when it dies, including the silent kind.
+Without Supabase (or with `?local=1`) rooms fall back to `BroadcastChannel`
+between tabs of one browser, so the offline demo still has multiplayer.
+Details: [`docs/DECISIONS.md`](docs/DECISIONS.md) D18 to D21.
+
+## Gemma's jobs
 
 1. **Eye.** It labels every numbered mark on the page with open vocabulary
    (`what: "cactus"`, `role: "hazard"`).
@@ -68,6 +108,9 @@ apps) both work.
    enemy a personality, rates difficulty and leaves a designer's note.
 4. **Critic.** When you win or die, it reviews your run with a kind roast and
    1–5 stars.
+5. **Arena designer.** It lays out multiplayer maps (platforms, hazards,
+   spawns, crates, monsters) from a theme or a drawing, as whitelisted data
+   that the server clamps.
 
 ## How it works
 
@@ -170,6 +213,10 @@ sounds are synthesized with Web Audio. Nothing is fetched from a CDN at runtime.
    `server-only` modules.
 
 Without these variables the app works fully; only the gallery is hidden.
+The arena then plays between tabs of one browser instead of over Realtime.
+Rooms need no tables: they use Realtime broadcast and presence with the
+anon key. Anonymous sign-in is used if you enable it in Supabase
+(Authentication), otherwise players are guests.
 
 ### No model at all
 
@@ -186,6 +233,9 @@ only, never for demos.
 | `pnpm test:model` | smoke-test the configured provider on a sample |
 | `pnpm test:vision [files…]` | headless OpenCV run on the samples (or given JPEGs) → `.out/` |
 | `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm test:arena [theme]` | Gemma designs one arena map |
+| `pnpm test:realtime` | two Realtime clients + anonymous sign-in check |
+| `pnpm exec tsx scripts/arena-bot.ts ROOM [secs] [bots]` | headless players join a room and report message rate and longest gap per player |
 
 ## Drawing tips
 
@@ -208,14 +258,19 @@ the photo. The full illustrated guide is at `/guide`.
 - The model can only choose from the `Rule` union in
   [`src/lib/schema.ts`](src/lib/schema.ts). Unknown rules are dropped and every
   number is clamped on the server.
+- Arena maps are data too: platforms, hazards, spawns, crates and monsters
+  from a whitelist, clamped and cleaned up on the server (no overlaps,
+  reachable hazards, spawns off hazards), and re-validated when a map
+  arrives from another player.
 - Server keys never reach the client. Per-IP rate limiting is on
-  `/api/parse` and `/api/review`, and 429s show a friendly retry message.
+  `/api/parse`, `/api/review` and `/api/arena/map`, and 429s show a
+  friendly retry message.
 
 ## Stack
 
 Next.js 16 (App Router) · TypeScript strict · Tailwind v4 · Phaser 3 ·
 OpenCV.js (Web Worker) · Zod · Zustand · `@google/genai` · Ollama ·
-Supabase (optional) · Rough.js.
+Supabase (optional: gallery + Realtime rooms) · Rough.js.
 
 ## License
 
