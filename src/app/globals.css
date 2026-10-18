@@ -18,7 +18,7 @@
   --sky: #2ec5ff;
   --card: #ffffff;
   /* Mark tags sit on the (always light) drawing, so these never flip in dark mode. */
-  --nav-h: 3.5rem;
+  --nav-h: 4rem;
   --tag-platform: #1a1033;
   --tag-hazard: #e8193c;
   --tag-bouncy: #d97706;
