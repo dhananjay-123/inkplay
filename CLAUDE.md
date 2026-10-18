@@ -66,8 +66,10 @@ src/
   app/                 routes (App Router) + api/ route handlers
   components/          React UI (design layer): arena/ (lobby, room HUD,
                        map maker, Phaser mount), home/ (intro film, playground,
-                       doodles), create/, game/, gallery/, guide/, nav, cursor
-  game/                Phaser 3 scenes, client-only (LevelScene, ArenaScene)
+                       doodles), create/, game/, gallery/, guide/,
+                       survival/, nav, cursor
+  game/                Phaser 3 scenes, client-only (LevelScene, ArenaScene,
+                       SurvivalScene)
   lib/
     env.ts             Zod-validated env, provider + hasSupabase flags
     schema.ts          Level / MarkLabel / Rule schemas + clamping
@@ -76,6 +78,8 @@ src/
     arena/             multiplayer arena: map schema + clamping/cleanup,
                        procedural fallback, weapons/buffs data,
                        Realtime (+watchdog) / BroadcastChannel transport
+    survival/          endless runner: chunk schema + clamping, seeded
+                       chunk generator, speed/difficulty ramp
     vision/            OpenCV.js preprocessing, set-of-marks rendering
     editor/            in-browser level canvas: scene + PNG export,
                        doodle library, templates/draft in localStorage

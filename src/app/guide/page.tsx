@@ -41,6 +41,13 @@ const TIPS = [
   'No paper? Open the canvas on the Create page and draw with a mouse, a pen tablet or your finger. Same rules apply.',
 ] as const;
 
+const SURVIVAL_KEYS = [
+  ['Space, ↑ or W · tap', 'jump, hold for higher'],
+  ['↓ or S · swipe down', 'slide under beams, slam down in the air'],
+  ['P or Esc', 'pause'],
+  ['R', 'restart the run'],
+] as const;
+
 const ARENA_KEYS = [
   ['A / D or ← →', 'move'],
   ['W, ↑ or Space', 'jump, hold to jetpack'],
@@ -141,6 +148,25 @@ export default function GuidePage() {
         lava, currents, spikes, crumbling floors and monsters. On a phone, turn it sideways for full screen and touch controls.
       </p>
 
+      <Heading n={7}>Or just keep running</Heading>
+      <p className="mt-3 max-w-2xl text-lg text-graphite">
+        Survival is an endless runner on the same page. The track scrolls at you and speeds up: jump gaps, spikes and lava, slide under
+        hanging beams, and stomp the walkers, flying eyes and ink turrets. You have 100 HP; hearts heal, a shield eats one hit, a magnet pulls
+        coins in, and zoom flies you over everything for a few seconds.
+      </p>
+      <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+        {SURVIVAL_KEYS.map(([key, does]) => (
+          <li key={key} className="rounded-[var(--wobble)] border-2 border-dashed border-ink/25 bg-card/70 px-4 py-3">
+            <p className="label">{key}</p>
+            <p className="mt-1 text-graphite">{does}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-4 max-w-2xl text-graphite">
+        Your score is metres run, plus 5 per coin and 25 per stomp. Your best run is saved in this browser and marked on the track. It works
+        offline: no model, no account.
+      </p>
+
       <div className="mt-12 flex flex-wrap gap-4">
         <Link href="/create" className="btn-game px-6 py-3.5 text-lg">
           Start drawing
@@ -150,6 +176,9 @@ export default function GuidePage() {
         </Link>
         <Link href="/arena" className="font-hand link-scrawl self-center text-xl text-ink">
           or open the arena
+        </Link>
+        <Link href="/survival" className="font-hand link-scrawl self-center text-xl text-ink">
+          or start running
         </Link>
       </div>
     </section>

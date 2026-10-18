@@ -252,3 +252,21 @@ decision, why.
   inside a platform are dropped, crates keep apart. Checked on 300
   procedural maps: 0 overlapping pairs of any kind.
 - Map rounds are timestamps, so a map made after a page reload always wins.
+
+### D22 — Survival mode: a seeded endless runner
+- `/survival` is a Subway Surfers-style runner in a new `SurvivalScene`. The
+  hero moves forward at the run speed and the camera follows; chunks are
+  built ~2 screens ahead and destroyed behind, so the object count stays
+  flat on long runs.
+- Chunks are data (`src/lib/survival/schema.ts`), generated from the run
+  seed and chunk index alone (`procedural.ts`). `finalizeChunk` clamps for
+  the speed the runner will have on arrival: gaps ≤ 62% and hazards ≤ 55%
+  of a full jump, ~0.5 s of landing room between dangers, hazards/beams/
+  ground mobs only on solid ground, solid seams. A scripted bot that only
+  reacts to what is just ahead survives to top speed, so tracks are fair.
+- No model in the loop on purpose: the runner must work offline and with
+  no Supabase. A Gemma-themed chunk set can plug into `finalizeChunk` later.
+- Hearts heal, so HP replaces lives; a pit costs 25 HP and lifts you onto the
+  next solid ground rather than ending the run.
+- Key presses use `JustDown` (latched) so a tap shorter than a frame still
+  jumps; touch is tap/swipe-up to jump and swipe-down to slide.

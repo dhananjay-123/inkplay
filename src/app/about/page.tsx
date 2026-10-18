@@ -17,6 +17,12 @@ const ARENA = [
   { where: 'the host', what: 'The earliest joiner still playing runs the monsters and the AI bots. If they leave, the next player takes over. A watchdog rebuilds a dead connection.', tag: 'no game server' },
 ] as const;
 
+const SURVIVAL = [
+  { where: 'a seeded generator', what: 'Lays out each chunk of track from the run seed: gaps, spikes, lava, crumbling floors, beams to slide under, ledges, mobs and pickups. It gets denser as the run speeds up.', tag: 'no model needed' },
+  { where: 'the clamps', what: 'Chunks are data, checked like levels and maps: gaps and hazards stay within a jump at the current speed, there is room to land between dangers, and every seam is solid ground.', tag: 'zod + cleanup' },
+  { where: 'Phaser', what: 'Streams chunks in ahead of you and drops them behind, so the page never ends. HP, invulnerability flashes, stomps and power-ups run in the browser.', tag: 'arcade physics' },
+] as const;
+
 const HONEST = [
   { q: 'Is it always right?', a: 'No. A hatched trampoline sometimes reads as spikes. The set-of-marks reveal shows exactly what Gemma thought, so you can redraw.' },
   { q: 'Can the model run code?', a: 'Never. It picks from a fixed list of rule types; anything else is dropped and every number is clamped.' },
@@ -44,6 +50,15 @@ export default function AboutPage() {
         Ink Arena is the same sketchbook as a jetpack shooter for a whole room. Start a room, share the code, and everyone plays one map live.
       </p>
       <Timeline steps={ARENA} className="mt-10" />
+
+      <h2 className="font-display mt-10 text-3xl font-extrabold tracking-tight sm:text-5xl">
+        And <span className="highlight">survival</span>
+      </h2>
+      <p className="mt-4 max-w-3xl text-lg text-graphite">
+        An endless runner on the same sketchbook page, playable with a keyboard or with taps and swipes on a phone. It needs no model and no
+        network, so it is the same game on the stage laptop in airplane mode.
+      </p>
+      <Timeline steps={SURVIVAL} className="mt-10" />
 
       <h2 className="font-display mt-10 text-3xl font-extrabold tracking-tight sm:text-5xl">Why an open model</h2>
       <p className="mt-4 max-w-3xl text-lg text-graphite">

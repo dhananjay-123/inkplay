@@ -10,7 +10,8 @@ through Ollama.
 
 There's also **Ink Arena** (`/arena`): a Mini Militia-style multiplayer
 shooter where Gemma designs the map from a theme, from your drawing, or on
-its own, and friends join with a room code.
+its own, and friends join with a room code. And **Survival** (`/survival`):
+an endless runner on the same sketchbook page.
 
 **Live:** https://inkplay-lemon.vercel.app · **Code:** https://github.com/dhananjay-123/inkplay
 
@@ -95,6 +96,38 @@ watchdog rebuilds the connection when it dies, including the silent kind.
 Without Supabase (or with `?local=1`) rooms fall back to `BroadcastChannel`
 between tabs of one browser, so the offline demo still has multiplayer.
 Details: [`docs/DECISIONS.md`](docs/DECISIONS.md) D18 to D21.
+
+## Survival (endless runner)
+
+`/survival` is a Subway Surfers-style runner drawn in marker ink. The page
+scrolls toward you and never ends.
+
+- **Controls:** Space, ↑ or W to jump (hold for a higher jump), ↓ or S to
+  slide (in the air it slams you down), P or Esc to pause, R to restart.
+  On a phone: tap or swipe up to jump, swipe down to slide, in landscape
+  full screen.
+- **The track:** gaps, spikes, lava, crumbling floors, hanging beams you
+  slide under, floating ledges, and mobs that walk at you, fly at head
+  height or spit ink blots (high ones to slide under, low ones to jump).
+  Land on a mob to stomp it.
+- **HP:** 100 points. Hits cost 15 to 30 and give a short flashing
+  invulnerability. Falling into a gap costs 25 and puts you back on the
+  next ground.
+- **Pickups:** coins, hearts (+30 HP), a shield that eats one hit, a coin
+  magnet, and a zoom boost that flies you over everything for 4 s.
+- **Ramp:** speed eases from 380 to 820 px/s over three and a half
+  minutes, and the obstacle mix gets denser and meaner.
+- **Score:** metres + 5 per coin + 25 per stomp. The best run is kept in
+  `localStorage` and marked on the track as "your best".
+
+Chunks are data too (`src/lib/survival/schema.ts`): ground pieces, ledges,
+hazards, beams, mobs and pickups. `finalizeChunk` clamps every number for
+the current speed: gaps and hazards stay within a comfortable jump, there is
+landing room between dangers, hazards sit on solid ground and chunk seams
+are always plain ground. Chunks come from a seeded generator
+(`src/lib/survival/procedural.ts`), so a run needs no model, no network and
+no Supabase. `pnpm exec tsx scripts/check-survival.ts` checks 1,200 chunks
+against those rules.
 
 ## Gemma's jobs
 
@@ -236,6 +269,7 @@ only, never for demos.
 | `pnpm test:arena [theme]` | Gemma designs one arena map |
 | `pnpm test:realtime` | two Realtime clients + anonymous sign-in check |
 | `pnpm exec tsx scripts/arena-bot.ts ROOM [secs] [bots]` | headless players join a room and report message rate and longest gap per player |
+| `pnpm exec tsx scripts/check-survival.ts` | generates survival chunks across seeds and speeds and checks gaps and seams |
 
 ## Drawing tips
 
