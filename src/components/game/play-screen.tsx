@@ -23,6 +23,11 @@ export function PlayScreen({ data }: Props) {
   const muted = useInkplay((s) => s.muted);
   const toggleMuted = useInkplay((s) => s.toggleMuted);
   const { level, id } = data;
+  // Same rule as the game: only collectibles count as coins (power-ups don't).
+  const totalCoins = useMemo(() => {
+    const ids = new Set(data.marks.map((m) => m.id));
+    return level.labels.filter((l) => l.role === 'collectible' && ids.has(l.id)).length;
+  }, [data.marks, level.labels]);
 
   useEffect(() => setMuted(muted), [muted]);
 
@@ -80,7 +85,7 @@ export function PlayScreen({ data }: Props) {
         </div>
         <div className="label flex items-center gap-4 tabular-nums">
           <span title="Deaths">✕ {live.deaths}</span>
-          <span title="Coins">$ {live.coins}</span>
+          <CoinTracker got={live.coins} total={totalCoins} />
           <span title="Time">{time}</span>
           <button type="button" onClick={toggleMuted} className="rounded-full border border-current px-3 py-1.5 hover:bg-ink hover:text-paper" aria-pressed={!muted}>
             {muted ? 'Sound off' : 'Sound on'}
@@ -114,7 +119,7 @@ export function PlayScreen({ data }: Props) {
       {/* game */}
       <div className="relative aspect-video w-full overflow-hidden rounded-sm bg-[#F3EEE3] shadow-[var(--shadow)] ring-1 ring-ink/10">
         <PhaserGame data={data} bus={bus} runKey={runKey} className="absolute inset-0" />
-        {end && <EndCard stats={end} review={review} onAgain={again} hasId={Boolean(id)} />}
+        {end && <EndCard stats={end} totalCoins={totalCoins} review={review} onAgain={again} hasId={Boolean(id)} />}
       </div>
 
       <div className="flex items-center justify-between px-2 pt-3">
@@ -129,7 +134,37 @@ export function PlayScreen({ data }: Props) {
   );
 }
 
-function EndCard({ stats, review, onAgain, hasId }: { stats: RunStats; review: ReviewResponse | null; onAgain: () => void; hasId: boolean }) {
+/** Coins: one pip per coin on the page (fills as you grab it), or n/total when there are many. */
+function CoinTracker({ got, total }: { got: number; total: number }) {
+  const all = total > 0 && got >= total;
+  const label = total > 0 ? `${got} of ${total} coins` : `${got} coins`;
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors ${all ? 'bg-accent text-accent-ink' : ''}`}
+    >
+      <span aria-hidden>$</span>
+      {total > 0 && total <= 8 ? (
+        <span className="flex items-center gap-1" aria-hidden>
+          {Array.from({ length: total }, (_, i) => (
+            <span
+              key={i < got ? `on-${i}` : `off-${i}`}
+              className={`h-2.5 w-2.5 rounded-full border-[1.5px] border-current ${i < got ? 'animate-[pop_.3s_cubic-bezier(.2,1.6,.4,1)_both] bg-current' : 'opacity-40'}`}
+            />
+          ))}
+        </span>
+      ) : (
+        <span key={got} className="inline-block animate-[pop_.3s_cubic-bezier(.2,1.6,.4,1)_both]">
+          {total > 0 ? `${got}/${total}` : got}
+        </span>
+      )}
+      {all && <span aria-hidden>✓</span>}
+    </span>
+  );
+}
+
+function EndCard({ stats, totalCoins, review, onAgain, hasId }: { stats: RunStats; totalCoins: number; review: ReviewResponse | null; onAgain: () => void; hasId: boolean }) {
   const heading = stats.result === 'win' ? 'You beat the paper.' : stats.result === 'timeout' ? 'Out of time.' : 'The ink won.';
   return (
     <div className="absolute inset-0 z-10 grid place-items-center bg-paper/80 p-4 backdrop-blur-[2px]" role="dialog" aria-label="Run summary">
@@ -137,7 +172,7 @@ function EndCard({ stats, review, onAgain, hasId }: { stats: RunStats; review: R
         <p className="label text-graphite">Playtester&apos;s verdict</p>
         <h2 className="font-display mt-2 text-3xl font-extrabold tracking-tight">{heading}</h2>
         <p className="label mt-3 tabular-nums text-graphite">
-          {stats.timeSeconds.toFixed(1)}s · {stats.deaths} deaths · {stats.coins} coins
+          {stats.timeSeconds.toFixed(1)}s · {stats.deaths} deaths · {totalCoins > 0 ? `${stats.coins}/${totalCoins}` : stats.coins} coins
         </p>
         <div className="mt-5 min-h-[4.5rem]">
           {review ? (
