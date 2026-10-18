@@ -128,17 +128,84 @@ export function cutOut(bg: HTMLCanvasElement, box: BBox, protect: BBox[], pad = 
 /** Arena scarf colours (canvas mirrors of the --accent/--pop/--hazard/--sun/--sky/--bubble/--tag-* tokens). */
 export const ARENA_COLORS = ['#B6FF2E', '#2D5BFF', '#FF4A3D', '#FFCF3F', '#5CC8FF', '#FF9EC7', '#15803D', '#D97706'] as const;
 
-export function drawPickup(kind: 'health' | 'ammo'): HTMLCanvasElement {
-  const c = canvas(40, 40);
+/** Short crate labels for weapon / buff pickups. */
+const CRATE: Record<string, { text: string; fill: string; round?: boolean }> = {
+  rifle: { text: 'RIFLE', fill: '#B6FF2E' },
+  flamethrower: { text: 'FIRE', fill: '#FF9E3D' },
+  chainsaw: { text: 'SAW', fill: '#B6FF2E' },
+  rockets: { text: 'RKT', fill: '#FF4A3D' },
+  grenades: { text: 'NADE', fill: '#B6FF2E' },
+  shield: { text: 'SHLD', fill: '#5CC8FF', round: true },
+  speed: { text: 'FAST', fill: '#5CC8FF', round: true },
+  double_jump: { text: '2JMP', fill: '#5CC8FF', round: true },
+  jetfuel: { text: 'FUEL', fill: '#5CC8FF', round: true },
+  damage: { text: '2X', fill: '#FF9EC7', round: true },
+};
+
+export function drawPickup(kind: string): HTMLCanvasElement {
+  const c = canvas(48, 40);
   const rc = rough.canvas(c);
+  const ctx = c.getContext('2d')!;
   if (kind === 'health') {
-    rc.rectangle(4, 6, 32, 28, { fill: '#FFFFFF', fillStyle: 'solid', stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.3, seed: 31 });
-    rc.line(20, 12, 20, 28, { stroke: PALETTE.hazard, strokeWidth: 6, roughness: 0.6, seed: 32 });
-    rc.line(12, 20, 28, 20, { stroke: PALETTE.hazard, strokeWidth: 6, roughness: 0.6, seed: 33 });
-  } else {
-    rc.rectangle(4, 10, 32, 22, { fill: '#FFCF3F', fillStyle: 'hachure', hachureGap: 4, stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.3, seed: 41 });
-    for (let i = 0; i < 3; i++) rc.line(12 + i * 8, 4, 12 + i * 8, 14, { stroke: PALETTE.ink, strokeWidth: 3, roughness: 0.6, seed: 42 + i });
+    rc.rectangle(8, 6, 32, 28, { fill: '#FFFFFF', fillStyle: 'solid', stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.3, seed: 31 });
+    rc.line(24, 12, 24, 28, { stroke: PALETTE.hazard, strokeWidth: 6, roughness: 0.6, seed: 32 });
+    rc.line(16, 20, 32, 20, { stroke: PALETTE.hazard, strokeWidth: 6, roughness: 0.6, seed: 33 });
+    return c;
   }
+  if (kind === 'ammo') {
+    rc.rectangle(8, 10, 32, 22, { fill: '#FFCF3F', fillStyle: 'hachure', hachureGap: 4, stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.3, seed: 41 });
+    for (let i = 0; i < 3; i++) rc.line(16 + i * 8, 4, 16 + i * 8, 14, { stroke: PALETTE.ink, strokeWidth: 3, roughness: 0.6, seed: 42 + i });
+    return c;
+  }
+  const cr = CRATE[kind] ?? { text: '?', fill: '#FFFFFF' };
+  const opts = { fill: cr.fill, fillStyle: 'solid', stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.2, seed: kind.length * 7 } as const;
+  if (cr.round) rc.ellipse(24, 20, 42, 34, opts);
+  else rc.rectangle(3, 6, 42, 28, opts);
+  ctx.fillStyle = PALETTE.ink;
+  ctx.font = 'bold 11px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(cr.text, 24, 21);
+  return c;
+}
+
+/** Hostile ink monsters: walker (blob on legs), flyer (winged eye), turret (box). */
+export function drawEnemy(kind: 'walker' | 'flyer' | 'turret'): HTMLCanvasElement {
+  const c = canvas(64, 56);
+  const rc = rough.canvas(c);
+  const ctx = c.getContext('2d')!;
+  const eye = (x: number, y: number) => {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(x, y, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.ink;
+    ctx.beginPath(); ctx.arc(x + 1.5, y + 1, 2.4, 0, Math.PI * 2); ctx.fill();
+  };
+  if (kind === 'walker') {
+    rc.ellipse(32, 26, 44, 38, { fill: PALETTE.hazard, fillStyle: 'cross-hatch', hachureGap: 5, stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.8, seed: 51 });
+    rc.line(22, 44, 18, 54, { stroke: PALETTE.ink, strokeWidth: 3, seed: 52 });
+    rc.line(42, 44, 46, 54, { stroke: PALETTE.ink, strokeWidth: 3, seed: 53 });
+    rc.line(20, 14, 29, 20, { stroke: PALETTE.ink, strokeWidth: 3.5, seed: 54 });
+    rc.line(44, 14, 35, 20, { stroke: PALETTE.ink, strokeWidth: 3.5, seed: 55 });
+    eye(25, 25); eye(39, 25);
+  } else if (kind === 'flyer') {
+    rc.polygon([[4, 22], [20, 14], [22, 30]], { fill: PALETTE.graphite, fillStyle: 'solid', stroke: PALETTE.ink, strokeWidth: 2, seed: 61 });
+    rc.polygon([[60, 22], [44, 14], [42, 30]], { fill: PALETTE.graphite, fillStyle: 'solid', stroke: PALETTE.ink, strokeWidth: 2, seed: 62 });
+    rc.circle(32, 26, 30, { fill: '#9B5CFF', fillStyle: 'cross-hatch', hachureGap: 4, stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.6, seed: 63 });
+    eye(32, 25);
+  } else {
+    rc.rectangle(12, 18, 40, 34, { fill: PALETTE.graphite, fillStyle: 'cross-hatch', hachureGap: 5, stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.4, seed: 71 });
+    rc.circle(32, 18, 22, { fill: PALETTE.hazard, fillStyle: 'solid', stroke: PALETTE.ink, strokeWidth: 2.5, seed: 72 });
+    eye(32, 18);
+  }
+  return c;
+}
+
+/** A crumbling ledge: dashed outline, sparse graphite hatching, cracks. */
+export function drawCrumble(w: number, h: number): HTMLCanvasElement {
+  const c = canvas(Math.ceil(w) + 8, Math.ceil(h) + 8);
+  const rc = rough.canvas(c);
+  rc.rectangle(4, 4, w, h, { fill: PALETTE.graphite, fillStyle: 'dots', hachureGap: 7, stroke: PALETTE.ink, strokeWidth: 2.5, strokeLineDash: [9, 6], roughness: 1.8, seed: Math.round(w) + 3 });
+  for (let x = 20; x < w - 10; x += 34) rc.line(x, 4, x + 6, 4 + h, { stroke: PALETTE.ink, strokeWidth: 1.5, roughness: 2, seed: x });
   return c;
 }
 
@@ -150,6 +217,7 @@ export function drawArena(
   size: { width: number; height: number },
   platforms: BBox[],
   under?: HTMLImageElement,
+  spikes: BBox[] = [],
 ): HTMLCanvasElement {
   const c = canvas(size.width, size.height);
   const ctx = c.getContext('2d')!;
@@ -168,6 +236,20 @@ export function drawArena(
       fill: PALETTE.ink, fillStyle: 'hachure', hachureGap: 6, hachureAngle: -41 + (i % 3) * 9,
       stroke: PALETTE.ink, strokeWidth: 3, roughness: 1.4, seed: 100 + i,
     });
+  });
+  // spikes: a row of hatched red teeth filling each box
+  spikes.forEach((sp, i) => {
+    const x0 = sp.x * c.width;
+    const y1 = (sp.y + sp.h) * c.height;
+    const w = sp.w * c.width;
+    const h = Math.max(14, sp.h * c.height);
+    const n = Math.max(2, Math.round(w / 22));
+    const tw = w / n;
+    for (let k = 0; k < n; k++) {
+      rc.polygon([[x0 + k * tw, y1], [x0 + k * tw + tw / 2, y1 - h], [x0 + (k + 1) * tw, y1]], {
+        fill: PALETTE.hazard, fillStyle: 'hachure', hachureGap: 4, stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.1, seed: 300 + i * 17 + k,
+      });
+    }
   });
   return c;
 }

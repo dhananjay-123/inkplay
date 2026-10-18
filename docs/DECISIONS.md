@@ -179,3 +179,30 @@ decision, why.
 - **Why:** Vercel functions can't hold websockets; Realtime broadcast with
   the anon key measured ~50 ms between two clients (`pnpm test:realtime`).
   Gemma theme maps take ~23 s, drawing maps 8–11 s (`pnpm test:arena`).
+
+### D19 — Arena v2: weapons, buffs, hazards, monsters, map options
+- **Weapons** (`src/lib/arena/weapons.ts`, plain data): SMG (default,
+  reloads), ink rifle, flamethrower, chainsaw (timed), rockets (splash),
+  grenades (G / right-click / touch button, bounce, fuse). A shot carries
+  only the weapon index and a damage multiplier; every client simulates it
+  the same way and the victim looks the damage up.
+- **Buffs:** shield (absorbs 60), speed, double jump, endless jet, double
+  damage, all timed. W/Space now jumps on the ground and jetpacks when held.
+- **Map:** hazards `lava | water (flow) | spikes`, `crumble` platforms that
+  fall ~0.65 s after anyone stands on them and regrow, hostile enemies
+  `walker | flyer | turret`. All clamped in `schema.ts` like before.
+- **Monsters are host-simulated:** the earliest joiner moves them, shoots
+  for them and decides hits on them (`npc` / `npcdie` messages); everyone
+  else interpolates. Hits on players stay victim-authoritative.
+- **Drawings:** a mark the vision step measured as a zigzag is *always*
+  spikes (Gemma called one a platform). Gemma also returns `extras` in the
+  drawing's style, and `growDrawing` mirrors the drawing and fills empty
+  cells, so an upload becomes a full arena. The cleaned drawing travels
+  with the map as a small JPEG backdrop so it lines up with the marks
+  (the raw sample photo didn't, after paper flattening).
+- **Map options** (monsters 0-8, pickups few/normal/lots, weapons, buffs,
+  lava, water, spikes, crumble) go to Gemma as constraints and are then
+  enforced by `applyOptions`, whatever the model did.
+- **Realtime resilience:** heartbeats run in a worker (`realtime.worker`)
+  and presence is re-tracked after a rejoin; a throttled background tab
+  used to drop out of the room silently.
