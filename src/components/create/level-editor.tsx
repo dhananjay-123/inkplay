@@ -48,7 +48,8 @@ type Props = {
   initial: Scene;
   templateId: string | null;
   templateName: string;
-  onPlay: (png: Blob) => void;
+  /** `title` is the template name, if the player gave one. */
+  onPlay: (png: Blob, title?: string) => void;
   onExit: () => void;
   onSaved: (id: string, name: string) => void;
 };
@@ -58,6 +59,8 @@ type Props = {
  * handwritten rules and imported pictures. Undo/redo, resize, autosave, and
  * templates kept in this browser.
  */
+const UNTITLED = 'Untitled level';
+
 export function LevelEditor({ initial, templateId, templateName, onPlay, onExit, onSaved }: Props) {
   const [items, setItems] = useState<Scene>(initial);
   const [tool, setTool] = useState<Tool>('pen');
@@ -286,7 +289,9 @@ export function LevelEditor({ initial, templateId, templateName, onPlay, onExit,
     setBusy(true);
     try {
       saveDraft(itemsRef.current);
-      onPlay(await exportPng(itemsRef.current));
+      // A name typed but not saved yet still counts; the default name doesn't.
+      const name = (saving ?? '').trim().slice(0, 40) || templateName;
+      onPlay(await exportPng(itemsRef.current), name && name !== UNTITLED ? name : undefined);
     } catch {
       setNote('Couldn’t turn the canvas into a picture. Try again?');
       setBusy(false);
@@ -294,7 +299,7 @@ export function LevelEditor({ initial, templateId, templateName, onPlay, onExit,
   };
 
   const save = (asNew: boolean) => {
-    const name = (saving ?? '').trim().slice(0, 40) || 'Untitled level';
+    const name = (saving ?? '').trim().slice(0, 40) || UNTITLED;
     const id = !asNew && templateId ? templateId : newId();
     if (saveTemplate({ id, name, scene: itemsRef.current })) {
       onSaved(id, name);

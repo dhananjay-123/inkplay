@@ -13,7 +13,7 @@ const jetbrains = JetBrains_Mono({ variable: '--font-jetbrains', subsets: ['lati
 export const metadata: Metadata = {
   title: { default: 'INKPLAY · Draw it. Write the rules. Play it.', template: '%s · INKPLAY' },
   description:
-    'Draw a level on paper, write the rules in plain words, snap a photo. Gemma 4 turns it into a platformer you can play, in the cloud or fully offline.',
+    'Draw a level on paper, write the rules in plain words, snap a photo. Gemma 4 turns it into a platformer you can play, in the cloud or fully offline, plus a multiplayer arena on maps Gemma designs.',
 };
 
 export const viewport: Viewport = {

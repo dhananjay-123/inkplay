@@ -68,6 +68,12 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 - [ ] Offline check in the browser (`pnpm build` online → Wi-Fi off → `pnpm demo`)
 - [ ] Lighthouse ≥ 85
 
+### Survival mode
+- [x] `/survival` endless runner: seeded, clamped chunks; jump/slide; HP, hearts, shield, magnet, zoom
+- [x] Mobs (walker, flyer, ink turret), stomps; HUD, pause, game-over card with best score
+- [x] Touch: tap/swipe, landscape full screen; keyboard; works with no model and no Supabase
+- [ ] Gemma-themed chunk sets; "play this drawing as survival"
+
 ### Phase 7 — Ship
 - [x] README (problem, novelty, Gemma's 4 jobs, diagram, real latency, setup, offline checklist)
 - [x] Deploy

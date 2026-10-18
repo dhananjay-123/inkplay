@@ -191,7 +191,8 @@ export default function Home() {
           </h2>
           <p className="mt-4 text-lg text-graphite">
             The same open Gemma 4 family runs this site in the cloud and runs on a laptop through Ollama. Fonts, OpenCV, the samples and the
-            sounds all ship with the app. Only the gallery needs a database. The game never does.
+            sounds all ship with the app. Only the gallery and online arena rooms need a database. The game never does, and offline the
+            arena still plays between browser tabs.
           </p>
         </Reveal>
         <Reveal className="justify-self-center md:justify-self-end">
@@ -205,6 +206,33 @@ export default function Home() {
             <p className="font-hand mt-4 text-lg">then turn the Wi-Fi off and draw something.</p>
           </div>
         </Reveal>
+      </section>
+
+      {/* -------------------------------------------------------------- arena */}
+      <section className="relative bg-paper-deep">
+        <TornEdge side="top" />
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-24 sm:px-8 md:grid-cols-[1.4fr_1fr]">
+          <Reveal>
+            <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-6xl">
+              Bring friends. <span className="highlight">Bring jetpacks.</span>
+            </h2>
+            <p className="mt-4 max-w-xl text-lg text-graphite">
+              Ink Arena is a multiplayer shooter on a map Gemma designs from a theme or from your drawing. Share a room code and everyone plays
+              the same map live. Autofire aims for you, crates hold rockets and chainsaws, and bots fill the room when your friends are busy.
+            </p>
+            <Link href="/arena" className="btn-game mt-8 px-6 py-3.5 text-lg">
+              Open the arena
+            </Link>
+          </Reveal>
+          <Reveal className="justify-self-center md:justify-self-end">
+            <div className="sketch tape tape-blue w-full max-w-xs rotate-[-1.5deg] p-6 pt-8">
+              <p className="font-hand text-xl">room code</p>
+              <p className="font-display mt-1 text-5xl font-extrabold tracking-[0.12em]">INK42</p>
+              <p className="font-hand mt-4 text-lg text-graphite">+ 3 bots, lava on, rockets please</p>
+            </div>
+          </Reveal>
+        </div>
+        <TornEdge side="bottom" />
       </section>
 
       {/* ------------------------------------------------------ gallery peek */}

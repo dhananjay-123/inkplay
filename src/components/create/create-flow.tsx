@@ -45,6 +45,7 @@ export function CreateFlow() {
   const [line, setLine] = useState(0);
   const [dragging, setDragging] = useState(false);
   const lastParse = useRef(0);
+  const title = useRef<string | undefined>(undefined); // player's own level name, kept for retries
   const fileInput = useRef<HTMLInputElement>(null);
   const busy = phase.kind === 'vision' || phase.kind === 'reading';
 
@@ -79,7 +80,7 @@ export function CreateFlow() {
       const res = await fetch('/api/parse', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ somImage: vision.somSend, cleanImage: vision.cleanSend, marks: vision.marks }),
+        body: JSON.stringify({ somImage: vision.somSend, cleanImage: vision.cleanSend, marks: vision.marks, title: title.current }),
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as ApiErrorBody | null;
@@ -93,8 +94,9 @@ export function CreateFlow() {
   }, []);
 
   const handle = useCallback(
-    async (source: Blob | HTMLImageElement) => {
+    async (source: Blob | HTMLImageElement, name?: string) => {
       if (busy) return;
+      title.current = name;
       setPhase({ kind: 'vision' });
       try {
         const vision = await processImage(source);
@@ -187,9 +189,9 @@ export function CreateFlow() {
           initial={seed.scene ?? loadDraft() ?? []}
           templateId={seed.templateId}
           templateName={seed.name}
-          onPlay={(png) => {
+          onPlay={(png, name) => {
             setSeed((s) => ({ ...s, scene: undefined }));
-            void handle(png);
+            void handle(png, name);
           }}
           onExit={reset}
           onSaved={(id, name) => setSeed((s) => ({ ...s, templateId: id, name }))}
