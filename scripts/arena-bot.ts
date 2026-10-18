@@ -27,7 +27,7 @@ let x = 0;
 let y = 0;
 let dir = 1;
 const meta = () => ({ id, name: 'Test Bot', color: '#FF4A3D', kills, deaths, joinedAt: Date.now() + 1e9 });
-const stats = { stIn: 0, shotsIn: 0, hitsTaken: 0, dieIn: 0, shotsOut: 0 };
+const stats = { stIn: 0, shotsIn: 0, hitsTaken: 0, dieIn: 0, shotsOut: 0, npcIn: 0, npcShotsIn: 0, weaponsSeen: [] as number[] };
 
 ch.on('broadcast', { event: 'm' }, ({ payload: m }) => {
   if (m.t === 'map' && !map) {
@@ -36,10 +36,14 @@ ch.on('broadcast', { event: 'm' }, ({ payload: m }) => {
     x = s.x * 2400;
     y = s.y * 1350 - 24;
     console.log(`[bot] got map "${map!.title}" (${map!.platforms.length} platforms), spawning at ${x | 0},${y | 0}`);
+  } else if (m.t === 'npc') {
+    stats.npcIn++;
+    stats.npcShotsIn += m.shots.length;
   } else if (m.t === 'st') {
     stats.stIn++;
+    if (!stats.weaponsSeen.includes(m.w)) stats.weaponsSeen.push(m.w);
     humans.set(m.id, { x: m.x, y: m.y, alive: m.alive, at: Date.now() });
-    for (const [sx, sy, a] of m.shots) {
+    for (const [sx, sy, a] of m.shots as [number, number, number][]) {
       stats.shotsIn++;
       if (!alive) continue;
       // does this ray pass within 22px of me, within range?
@@ -79,16 +83,16 @@ ch.subscribe(async (s) => {
     x += dir * 25; // ~250 px/s strafing
     const s0 = map.spawns[0].x * 2400;
     if (Math.abs(x - s0) > 180) dir = -dir;
-    const shots: [number, number, number][] = [];
+    const shots: [number, number, number, number, number][] = [];
     const target = [...humans.values()].find((h) => h.alive && Date.now() - h.at < 2000);
     let aim = dir > 0 ? 0 : Math.PI;
     if (target) aim = Math.atan2(target.y - y, target.x - x);
     if (alive && target && Date.now() > nextShot && Math.hypot(target.x - x, target.y - y) < 900) {
-      shots.push([Math.round(x + Math.cos(aim) * 26), Math.round(y + Math.sin(aim) * 26), +aim.toFixed(3)]);
+      shots.push([Math.round(x + Math.cos(aim) * 26), Math.round(y + Math.sin(aim) * 26), +aim.toFixed(3), 0, 10]);
       stats.shotsOut++;
       nextShot = Date.now() + 250;
     }
-    ch.send({ type: 'broadcast', event: 'm', payload: { t: 'st', id, x: Math.round(x), y: Math.round(y), vx: dir * 250, vy: 0, aim: +aim.toFixed(2), hp, alive, jet: false, shots } });
+    ch.send({ type: 'broadcast', event: 'm', payload: { t: 'st', id, x: Math.round(x), y: Math.round(y), vx: dir * 250, vy: 0, aim: +aim.toFixed(2), hp, alive, jet: false, w: 0, sh: false, shots } });
     if (Date.now() - t0 > seconds * 1000) {
       clearInterval(tick);
       console.log('[bot] stats', JSON.stringify({ ...stats, kills, deaths, hp }));

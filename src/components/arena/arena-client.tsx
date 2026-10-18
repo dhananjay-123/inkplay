@@ -7,7 +7,7 @@ import { ARENA_COLORS } from '@/game/art';
 import { play as sfx, setMuted } from '@/game/sfx';
 import { connectRoom, type NetMsg, type PlayerMeta, type Transport } from '@/lib/arena/net';
 import { proceduralArena } from '@/lib/arena/procedural';
-import { parseWireMap, type ArenaMap, type ArenaMapResponse } from '@/lib/arena/schema';
+import { DEFAULT_OPTIONS, parseWireMap, type ArenaMap, type ArenaMapResponse, type MapOptions } from '@/lib/arena/schema';
 import { SAMPLES, sampleSrc, sampleThumb } from '@/lib/samples';
 import { useInkplay } from '@/lib/store';
 import { anonymousUserId } from '@/lib/supabase/client';
@@ -187,7 +187,7 @@ export function ArenaClient() {
         </div>
       </form>
       <p className="font-hand mt-6 text-lg text-graphite">
-        A/D to move, W or Space for the jetpack. Autofire aims and shoots at the nearest enemy you can see; turn it off (F) to aim with the mouse and click to fire. R reloads.
+        A/D to move, W or Space to jump and jetpack, G or right-click for a grenade. Walk over crates for rifles, flamethrowers, chainsaws, rockets, shields and boosts. Autofire aims and shoots at the nearest enemy you can see; turn it off (F) to aim with the mouse and click to fire. R reloads.
       </p>
     </div>
   );
@@ -234,7 +234,15 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
     net.track(me);
   }, [me, net]);
 
-  const nameOf = useCallback((id: string | null) => (id ? peersRef.current.find((p) => p.id === id)?.name ?? 'someone' : 'gravity'), []);
+  const nameOf = useCallback((id: string | null) => {
+    if (!id) return 'the map';
+    if (id.startsWith('npc:')) return 'an ink monster';
+    return peersRef.current.find((p) => p.id === id)?.name ?? 'someone';
+  }, []);
+  const creditKill = useCallback(() => {
+    sfx('stomp');
+    setMe({ ...meRef.current, kills: meRef.current.kills + 1 });
+  }, [setMe]);
   const pushFeed = useCallback((text: string, mine: boolean) => {
     const key = ++feedKey.current;
     setFeed((f) => [...f.slice(-4), { key, text, mine }]);
@@ -273,10 +281,11 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
       } else if (m.t === 'die') {
         const killedByMe = m.killer === mine.id;
         pushFeed(`${nameOf(m.killer)} inked ${nameOf(m.victim)}`, killedByMe);
-        if (killedByMe) {
-          sfx('stomp');
-          setMe({ ...meRef.current, kills: meRef.current.kills + 1 });
-        }
+        if (killedByMe) creditKill();
+      } else if (m.t === 'npcdie') {
+        const mineKill = m.killer === mine.id;
+        pushFeed(`${nameOf(m.killer)} popped an ink monster`, mineKill);
+        if (mineKill) creditKill();
       }
     });
     const offPeers = net.onPeers((list) => {
@@ -291,7 +300,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
       offPeers();
       clearTimeout(t);
     };
-  }, [net, bus, me.id, adopt, broadcastMap, nameOf, pushFeed, setMe]);
+  }, [net, bus, me.id, adopt, broadcastMap, nameOf, pushFeed, creditKill]);
 
   // ---------- scene → React
   useEffect(() => {
@@ -301,9 +310,15 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
         pushFeed(`${nameOf(killer)} inked you`, false);
         setMe({ ...meRef.current, deaths: meRef.current.deaths + 1 });
       }),
+      // As host I decide enemy deaths; the network doesn't echo them back to me.
+      bus.on('npcdie', ({ killer }) => {
+        const mineKill = killer === meRef.current.id;
+        pushFeed(`${nameOf(killer)} popped an ink monster`, mineKill);
+        if (mineKill) creditKill();
+      }),
     ];
     return () => offs.forEach((o) => o());
-  }, [bus, nameOf, pushFeed, setMe]);
+  }, [bus, nameOf, pushFeed, setMe, creditKill]);
 
   // Leaving browser full screen (Esc, system back) leaves immersive mode on desktop too.
   useEffect(() => {
@@ -346,6 +361,8 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
     const all = peers.length ? peers : [me];
     return [...all].sort((a, b) => a.joinedAt - b.joinedAt || a.id.localeCompare(b.id))[0]?.id === me.id;
   }, [peers, me]);
+  // The host simulates the hostile enemies for everyone.
+  useEffect(() => bus.emit('host', host), [bus, host]);
 
   const copyInvite = async () => {
     const url = `${window.location.origin}/arena?room=${room}`;
@@ -382,9 +399,19 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
         <div className={`label flex items-center gap-2 tabular-nums sm:gap-3 [&_button]:whitespace-nowrap ${immersive ? 'min-w-0 flex-nowrap overflow-x-auto' : 'flex-wrap'}`}>
           {hud && (
             <>
-              <Meter label="HP" value={hud.hp / 100} tone={hud.hp > 35 ? 'accent' : 'hazard'} text={String(hud.hp)} />
-              <Meter label="Jet" value={hud.fuel} tone="sky" />
-              <span title="Ammo">{hud.reloading ? 'reloading…' : `${hud.ammo}/${hud.mag}`}</span>
+              <Meter label="HP" value={hud.hp / 100} tone={hud.hp > 35 ? 'accent' : 'hazard'} text={hud.shield > 0 ? `${hud.hp}+${hud.shield}` : String(hud.hp)} />
+              <Meter label="Jet" value={hud.fuel} tone="sky" text={`${Math.round(hud.fuel * 100)}%`} />
+              <span className="shrink-0" title="Weapon and ammo">
+                {hud.weapon} {hud.reloading ? 'reloading…' : hud.ammo}
+              </span>
+              <span className="shrink-0" title="Grenades (G or right-click)">
+                nade {hud.grenades}
+              </span>
+              {hud.buffs.map((b) => (
+                <span key={b.name} className="shrink-0 rounded-[var(--wobble-btn)] border-2 border-ink bg-sky px-1.5 text-[0.62rem] text-accent-ink" title={b.name}>
+                  {b.name} {b.s}s
+                </span>
+              ))}
             </>
           )}
           <button type="button" onClick={() => setAutofire((a) => !a)} aria-pressed={autofire} className={`btn-sm px-3 py-1 ${autofire ? 'btn-game' : 'btn-ghost'}`} title="F">
@@ -410,7 +437,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
       <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size]">
         <div className="sketch relative aspect-video w-[min(100cqw,calc(100cqh*16/9))] overflow-hidden">
           {current ? (
-            <ArenaGame key={`${current.round}-${current.from}`} map={current.map} me={me} net={net} bus={bus} autofire={autofire} className="absolute inset-0" />
+            <ArenaGame key={`${current.round}-${current.from}`} map={current.map} me={me} net={net} bus={bus} autofire={autofire} isHost={host} className="absolute inset-0" />
           ) : (
             !showMaker && (
               <div className="absolute inset-0 grid place-items-center">
@@ -457,7 +484,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
         <p className="font-hand min-w-0 flex-1 truncate text-base text-graphite" title={current?.map.story}>
           {current?.note ?? current?.map.story ?? 'Waiting for a map.'}
         </p>
-        <p className="font-hand hidden shrink-0 text-base text-graphite lg:block">A/D move · W/Space jetpack · autofire aims for you · F to aim yourself · R reload</p>
+        <p className="font-hand hidden shrink-0 text-base text-graphite lg:block">A/D move · W/Space jump + jetpack · G grenade · autofire aims for you · F to aim yourself · R reload</p>
       </div>
       {current && !showMaker && <ArenaTouch bus={bus} />}
       {!portraitOk && (
@@ -498,10 +525,11 @@ type MakerState = { busy: string | null; error: string | null };
 
 function MapMaker({ onMap, onClose }: { onMap: (m: ArenaMap, extra: Pick<Current, 'note' | 'source'>) => void; onClose?: () => void }) {
   const [theme, setTheme] = useState('');
+  const [opts, setOpts] = useState<MapOptions>(DEFAULT_OPTIONS);
   const [st, setSt] = useState<MakerState>({ busy: null, error: null });
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const ask = async (body: unknown, busy: string) => {
+  const ask = async (body: unknown, busy: string, backdrop?: string) => {
     setSt({ busy, error: null });
     try {
       const res = await fetch('/api/arena/map', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -510,7 +538,7 @@ function MapMaker({ onMap, onClose }: { onMap: (m: ArenaMap, extra: Pick<Current
         throw new Error(e?.error?.message ?? `HTTP ${res.status}`);
       }
       const data = (await res.json()) as ArenaMapResponse;
-      const map = parseWireMap(data.map);
+      const map = parseWireMap(backdrop ? { ...data.map, backdrop } : data.map);
       if (!map) throw new Error('That map came back smudged.');
       setSt({ busy: null, error: null });
       onMap(map, { note: data.note, source: data.source });
@@ -520,13 +548,14 @@ function MapMaker({ onMap, onClose }: { onMap: (m: ArenaMap, extra: Pick<Current
     }
   };
 
-  const fromImage = async (source: Blob | HTMLImageElement, sampleId?: string) => {
+  const fromImage = async (source: Blob | HTMLImageElement) => {
     setSt({ busy: 'Reading your drawing…', error: null });
     try {
       const { processImage } = await import('@/lib/vision/client');
       const p = await processImage(source);
       if (p.marks.length === 0) throw new Error('No ink found on that page.');
-      await ask({ mode: 'drawing', marks: p.marks, cleanImage: p.cleanSend, somImage: p.somSend, sampleId }, 'Gemma is turning your drawing into an arena…');
+      const backdrop = await shrinkJpeg(p.cleanFull, 800, 0.55);
+      await ask({ mode: 'drawing', marks: p.marks, cleanImage: p.cleanSend, somImage: p.somSend, options: opts }, 'Gemma is turning your drawing into an arena… (about 30 s)', backdrop);
     } catch (e) {
       setSt({ busy: null, error: e instanceof Error ? e.message : String(e) });
     }
@@ -541,7 +570,7 @@ function MapMaker({ onMap, onClose }: { onMap: (m: ArenaMap, extra: Pick<Current
       setSt({ busy: null, error: 'Could not load that sample.' });
       return;
     }
-    await fromImage(img, id);
+    await fromImage(img);
   };
 
   return (
@@ -563,11 +592,12 @@ function MapMaker({ onMap, onClose }: { onMap: (m: ArenaMap, extra: Pick<Current
           <p className="font-hand animate-pulse py-10 text-center text-2xl">{st.busy}</p>
         ) : (
           <>
+            <MapOptionsPanel opts={opts} setOpts={setOpts} />
             <form
               className="sketch grid gap-3 p-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                void ask({ mode: 'theme', theme: theme.trim() || undefined }, 'Gemma is sketching an arena… (about 20 s)');
+                void ask({ mode: 'theme', theme: theme.trim() || undefined, options: opts }, 'Gemma is sketching an arena… (about 30 s)');
               }}
             >
               <span className="font-hand text-xl">Gemma, by itself</span>
@@ -611,7 +641,7 @@ function MapMaker({ onMap, onClose }: { onMap: (m: ArenaMap, extra: Pick<Current
               />
             </div>
 
-            <button type="button" onClick={() => onMap(proceduralArena(Math.floor(Math.random() * 2 ** 31)), { source: 'procedural', note: 'The ruler drew this one, instantly.' })} className="font-hand link-scrawl justify-self-start text-lg text-graphite">
+            <button type="button" onClick={() => onMap(proceduralArena(Math.floor(Math.random() * 2 ** 31), opts), { source: 'procedural', note: 'The ruler drew this one, instantly.' })} className="font-hand link-scrawl justify-self-start text-lg text-graphite">
               No time? Instant ruler map
             </button>
           </>
@@ -622,10 +652,72 @@ function MapMaker({ onMap, onClose }: { onMap: (m: ArenaMap, extra: Pick<Current
   );
 }
 
+/** Small JPEG of the cleaned drawing, sent with the map so everyone sees the same backdrop. */
+async function shrinkJpeg(dataUrl: string, maxW: number, quality: number): Promise<string | undefined> {
+  try {
+    const img = new Image();
+    img.src = dataUrl;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = Math.min(maxW, img.width);
+    c.height = Math.round((img.height * c.width) / img.width);
+    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+    const out = c.toDataURL('image/jpeg', quality);
+    return out.length < 150_000 ? out : c.toDataURL('image/jpeg', 0.35);
+  } catch {
+    return undefined;
+  }
+}
+
+function MapOptionsPanel({ opts, setOpts }: { opts: MapOptions; setOpts: (o: MapOptions) => void }) {
+  const toggles: { key: 'weapons' | 'buffs' | 'lava' | 'water' | 'spikes' | 'crumble'; label: string }[] = [
+    { key: 'weapons', label: 'Weapon crates' },
+    { key: 'buffs', label: 'Buffs' },
+    { key: 'lava', label: 'Lava' },
+    { key: 'water', label: 'Water currents' },
+    { key: 'spikes', label: 'Spikes' },
+    { key: 'crumble', label: 'Crumbling floors' },
+  ];
+  return (
+    <div className="sketch-soft grid gap-3 p-4">
+      <span className="font-hand text-xl">What goes in the map</span>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <label className="flex items-center gap-2">
+          <span className="font-hand text-lg">Monsters</span>
+          <input
+            type="range"
+            min={0}
+            max={8}
+            value={opts.enemies}
+            onChange={(e) => setOpts({ ...opts, enemies: Number(e.target.value) })}
+            className="w-28 accent-[var(--hazard)]"
+          />
+          <span className="label w-4 tabular-nums">{opts.enemies}</span>
+        </label>
+        <div className="flex items-center gap-2" role="radiogroup" aria-label="Pickups">
+          <span className="font-hand text-lg">Pickups</span>
+          {(['few', 'normal', 'lots'] as const).map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={opts.pickups === k} onClick={() => setOpts({ ...opts, pickups: k })} className={`btn-sm px-2.5 py-0.5 ${opts.pickups === k ? 'btn-game' : 'btn-ghost'}`}>
+              {k}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {toggles.map((t) => (
+          <button key={t.key} type="button" aria-pressed={opts[t.key]} onClick={() => setOpts({ ...opts, [t.key]: !opts[t.key] })} className={`btn-sm px-3 py-1 ${opts[t.key] ? 'btn-game' : 'btn-ghost line-through opacity-70'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------- touch */
 
 function ArenaTouch({ bus }: { bus: ArenaBus }) {
-  const hold = (key: 'left' | 'right' | 'jet') => ({
+  const hold = (key: 'left' | 'right' | 'jet' | 'grenade') => ({
     onPointerDown: (e: React.PointerEvent) => {
       e.currentTarget.setPointerCapture(e.pointerId);
       bus.emit('touch', { [key]: true });
@@ -641,7 +733,10 @@ function ArenaTouch({ bus }: { bus: ArenaBus }) {
         <button type="button" aria-label="Move left" className={btn} {...hold('left')}>←</button>
         <button type="button" aria-label="Move right" className={btn} {...hold('right')}>→</button>
       </div>
-      <button type="button" aria-label="Jetpack" className={`${btn} h-20 w-20`} {...hold('jet')}>⇧</button>
+      <div className="flex items-end gap-3">
+        <button type="button" aria-label="Throw grenade" className={btn} {...hold('grenade')}><span className="label text-xs">nade</span></button>
+        <button type="button" aria-label="Jump and jetpack" className={`${btn} h-20 w-20`} {...hold('jet')}>⇧</button>
+      </div>
     </div>
   );
 }

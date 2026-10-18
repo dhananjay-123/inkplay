@@ -11,7 +11,9 @@ export function supabaseBrowser(): SupabaseClient | null {
   if (!url || !key) return null;
   client ??= createClient(url, key, {
     auth: { persistSession: true, autoRefreshToken: true },
-    realtime: { params: { eventsPerSecond: 30 } },
+    // Heartbeats in a worker: background tabs throttle timers, and a missed
+    // heartbeat silently drops the socket (and the player) from the room.
+    realtime: { params: { eventsPerSecond: 30 }, worker: true },
   });
   return client;
 }

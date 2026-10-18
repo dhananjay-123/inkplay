@@ -13,11 +13,18 @@ import type { ArenaMap } from './schema';
 
 export type PlayerMeta = { id: string; name: string; color: string; kills: number; deaths: number; joinedAt: number };
 
-/** [x, y, angle] of each shot fired since the last state message. */
-export type Shot = [number, number, number];
+/** [x, y, angle, weapon index (WEAPON_IDS), damage x10] of each shot since the last state message. */
+export type Shot = [number, number, number, number, number];
+/** One hostile enemy, as the room host broadcasts it: [id, x, y, hp, alive (0/1), aim]. */
+export type NpcState = [number, number, number, number, number, number];
+/** An enemy's shot: [x, y, angle, enemy id]. */
+export type NpcShot = [number, number, number, number];
 
 export type NetMsg =
-  | { t: 'st'; id: string; x: number; y: number; vx: number; vy: number; aim: number; hp: number; alive: boolean; jet: boolean; shots: Shot[] }
+  | { t: 'st'; id: string; x: number; y: number; vx: number; vy: number; aim: number; hp: number; alive: boolean; jet: boolean; w: number; sh: boolean; shots: Shot[] }
+  /** Room host only: hostile enemies (host-simulated) and their shots. */
+  | { t: 'npc'; s: NpcState[]; shots: NpcShot[] }
+  | { t: 'npcdie'; id: number; killer: string | null }
   | { t: 'die'; victim: string; killer: string | null }
   | { t: 'map'; map: ArenaMap; from: string; round: number; note?: string }
   | { t: 'needmap'; from: string }
@@ -48,6 +55,7 @@ const isMeta = (v: unknown): v is PlayerMeta =>
 
 class SupabaseTransport implements Transport {
   readonly kind = 'online' as const;
+  closed = false;
   private msgs = new Emitter<NetMsg>();
   private peers = new Emitter<PlayerMeta[]>();
   constructor(private ch: RealtimeChannel) {
@@ -66,13 +74,20 @@ class SupabaseTransport implements Transport {
   onMessage(cb: (msg: NetMsg) => void) {
     return this.msgs.on(cb);
   }
+  private meta: PlayerMeta | null = null;
   track(meta: PlayerMeta) {
+    this.meta = meta;
     void this.ch.track(meta);
+  }
+  /** After a reconnect the channel rejoins, but presence must be tracked again. */
+  resubscribed() {
+    if (this.meta) void this.ch.track(this.meta);
   }
   onPeers(cb: (peers: PlayerMeta[]) => void) {
     return this.peers.on(cb);
   }
   close() {
+    this.closed = true;
     void this.ch.untrack();
     void this.ch.unsubscribe();
   }
@@ -148,8 +163,12 @@ export async function connectRoom(room: string, myId: string, opts: { forceLocal
     const transport = new SupabaseTransport(ch);
     const ok = await new Promise<boolean>((resolve) => {
       const t = setTimeout(() => resolve(false), 5000);
+      let first = true;
       ch.subscribe((status) => {
+        if (status === 'SUBSCRIBED' && !first && !transport.closed) transport.resubscribed();
         if (status !== 'SUBSCRIBED' && status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
+        if (!first) return;
+        first = false;
         clearTimeout(t);
         resolve(status === 'SUBSCRIBED');
       });

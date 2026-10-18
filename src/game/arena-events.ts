@@ -3,10 +3,14 @@ import type { PlayerMeta } from '@/lib/arena/net';
 /** HUD numbers from the arena, a few times per second. */
 export type ArenaHud = {
   hp: number;
+  shield: number;
   fuel: number;
-  ammo: number;
-  mag: number;
+  weapon: string;
+  /** "24/30", "∞", or seconds left for the chainsaw. */
+  ammo: string;
   reloading: boolean;
+  grenades: number;
+  buffs: { name: string; s: number }[];
   respawnIn: number | null;
   autofire: boolean;
 };
@@ -15,10 +19,14 @@ export type ArenaEvents = {
   hud: ArenaHud;
   /** I died (the transport doesn't echo my own broadcasts back to me). */
   died: { killer: string | null };
+  /** As room host I saw an enemy die (others hear it over the network). */
+  npcdie: { killer: string | null };
   // React → game
   peers: PlayerMeta[];
-  touch: { left?: boolean; right?: boolean; jet?: boolean };
+  touch: { left?: boolean; right?: boolean; jet?: boolean; grenade?: boolean };
   autofire: boolean;
+  /** This client simulates the hostile enemies for the room. */
+  host: boolean;
 };
 
 type Handler<T> = (payload: T) => void;

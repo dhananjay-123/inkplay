@@ -14,6 +14,7 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 | 5 | Design layer | 🟡 | Arcade palette, intro film, cursor, nav, guide, rules playground, living doodles done; Lenis + page transitions not done (cuttable) |
 | 6 | Polish + resilience | 🟡 | Rate limits, reduced motion, sounds, perf pass done; offline browser run + Lighthouse pending |
 | 8 | Ink Arena multiplayer (`/arena`, D18) | 🟡 | Realtime rooms, jetpack, autofire, respawn, Gemma maps from theme or drawing; verified with a browser + headless bot (`scripts/arena-bot.ts`) over real Realtime (map sync, kills both ways, respawn, scoreboard), 2 tabs offline, theme / drawing / night maps. Pending: 2-human playtest on Vercel |
+| 9 | Arena v2 (D19): full screen + landscape, auto-aim, weapons, buffs, hazards, monsters, map options | 🟡 | Verified in browser + bot over Realtime (monster sync, rockets, kills). Pending: real-phone playtest |
 | 7 | Ship (README, deploy, `v1.0`) | 🟡 | README + deploy done; tag `v1.0` pending |
 
 ## Phase checklists
