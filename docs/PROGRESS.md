@@ -8,13 +8,16 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 |---|---|---|---|
 | 0 | Repo + docs (`CLAUDE.md`, `docs/*`) | ✅ | |
 | 1 | Model smoke test (`scripts/test-model.ts`) | ✅ | Gemini + Ollama both 5/5 on player/goal (numbers below) |
-| 2 | Skeleton + deploy | ✅ | Live on Vercel (Mumbai, `bom1`): https://inkplay-lemon.vercel.app · GitHub `dhananjay-123/hacktober-fest-Inkplay`, every push to `main` deploys |
+| 2 | Skeleton + deploy | ✅ | Live on Vercel (Mumbai, `bom1`): https://inkplay-lemon.vercel.app · GitHub `dhananjay-123/inkplay`, every push to `main` deploys |
 | 3 | Core loop | ✅ | End to end in the browser with Gemma 4 (cloud); all 5 samples through both providers in the smoke test; digital drawings handled |
 | 4 | Supabase gallery | 🟡 | Code done (schema.sql, `/gallery`, home peek); verify against a real Supabase project |
 | 5 | Design layer | 🟡 | Arcade palette, intro film, cursor, nav, guide, rules playground, living doodles done; Lenis + page transitions not done (cuttable) |
 | 6 | Polish + resilience | 🟡 | Rate limits, reduced motion, sounds, perf pass done; offline browser run + Lighthouse pending |
-| 8 | Ink Arena multiplayer (`/arena`, D18) | 🟡 | Realtime rooms, jetpack, autofire, respawn, Gemma maps from theme or drawing; verified with a browser + headless bot (`scripts/arena-bot.ts`) over real Realtime (map sync, kills both ways, respawn, scoreboard), 2 tabs offline, theme / drawing / night maps. Pending: 2-human playtest on Vercel |
-| 9 | Arena v2 (D19): full screen + landscape, auto-aim, weapons, buffs, hazards, monsters, map options | 🟡 | Verified in browser + bot over Realtime (monster sync, rockets, kills). Pending: real-phone playtest |
+| 8 | Ink Arena multiplayer (`/arena`, D18) | ✅ | Realtime rooms, jetpack, autofire, respawn, Gemma maps from theme or drawing; verified with a browser + headless bot (`scripts/arena-bot.ts`) over real Realtime (map sync, kills both ways, respawn, scoreboard), 2 tabs offline, theme / drawing / night maps. Pending: 2-human playtest on Vercel |
+| 9 | Arena v2 (D19): full screen + landscape, auto-aim, weapons, buffs, hazards, monsters, map options | ✅ | Verified in browser + bot over Realtime (monster sync, rockets, kills) |
+| 10 | Arena reliability (D20): Realtime watchdog, presence-independent players, sender-clock interpolation, minimap, random monster respawns | ✅ | 4 clients: 9.4 msgs/s per sender, max gap < 0.45 s; forced silent socket death heals in ~7 s |
+| 11 | AI bots + map cleanup (D21) | ✅ | Bots by number (map maker + live control); 0 overlapping elements across 300 test maps |
+| 12 | Arena human playtest | ⬜ | Several real players on Vercel, incl. phones in landscape |
 | 7 | Ship (README, deploy, `v1.0`) | 🟡 | README + deploy done; tag `v1.0` pending |
 
 ## Phase checklists

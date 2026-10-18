@@ -32,12 +32,18 @@ in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 8. **Verify uncertain behaviour with a small script first** (API shapes,
    provider quirks), then build on what you saw.
 9. **Golden rule:** draw → parse → play → review must work with **no
-   Supabase at all**. Supabase is the gallery only, always best-effort.
+   Supabase at all**. Supabase is the gallery and the arena's Realtime
+   rooms, always best-effort: without it the arena falls back to
+   `BroadcastChannel` (tabs of one browser).
 10. **Commit often, push once.** Every push to `main` is a Vercel production
     deploy. Batch the work, run `pnpm build` locally, then push a single time.
 11. **Rules are data, never code.** The model may only pick from the
     whitelisted `Rule` union in `src/lib/schema.ts`. All numbers are clamped
-    server-side.
+    server-side. Arena maps follow the same rule (`src/lib/arena/schema.ts`:
+    `finalizeArena` clamps, separates overlaps, keeps hazards reachable).
+12. **Test multiplayer with real clients.** `scripts/arena-bot.ts ROOM secs N`
+    joins N headless players and reports per-player message rate and the
+    longest gap; run it against a browser room before shipping netcode.
 
 ## Commands
 
@@ -51,13 +57,15 @@ in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm test:arena [theme]` | Gemma designs one arena map |
 | `pnpm test:realtime` | Two Supabase Realtime clients + anon sign-in check |
+| `pnpm exec tsx scripts/arena-bot.ts ROOM [secs] [n]` | N headless arena players; sync report |
 
 ## Layout
 
 ```
 src/
   app/                 routes (App Router) + api/ route handlers
-  components/          React UI (design layer): home/ (intro film, playground,
+  components/          React UI (design layer): arena/ (lobby, room HUD,
+                       map maker, Phaser mount), home/ (intro film, playground,
                        doodles), create/, game/, gallery/, guide/, nav, cursor
   game/                Phaser 3 scenes, client-only (LevelScene, ArenaScene)
   lib/
@@ -65,8 +73,9 @@ src/
     schema.ts          Level / MarkLabel / Rule schemas + clamping
     fixer.ts           post-parse auto-fixer (player, goal, reachability)
     ai/                provider abstraction (gemini | ollama) + prompts
-    arena/             multiplayer arena: map schema + clamping, procedural
-                       fallback, Realtime / BroadcastChannel transport
+    arena/             multiplayer arena: map schema + clamping/cleanup,
+                       procedural fallback, weapons/buffs data,
+                       Realtime (+watchdog) / BroadcastChannel transport
     vision/            OpenCV.js preprocessing, set-of-marks rendering
     editor/            in-browser level canvas: scene + PNG export,
                        doodle library, templates/draft in localStorage
@@ -106,14 +115,15 @@ supabase/schema.sql    paste into the Supabase SQL editor
 
 | Mode | Where | `MODEL_PROVIDER` | Supabase |
 |---|---|---|---|
-| Public site | Vercel | `gemini` | on |
-| Stage demo | Laptop, `pnpm build` online → `pnpm demo` offline | `ollama` | off |
+| Public site | Vercel | `gemini` | on (gallery + arena rooms) |
+| Stage demo | Laptop, `pnpm build` online → `pnpm demo` offline | `ollama` | off (arena: tabs of one browser, bots fill the room) |
 | Dev | Laptop, `pnpm dev` | either | either |
 
 ## Cut order if time runs short
 
 about page → gallery hover effects → intro video support → enemy chase →
-gallery itself.
+gallery itself → arena extras (monsters, crumbling floors) before arena
+core (rooms, autofire, Gemma maps).
 
 **Never cut:** core loop, set-of-marks reveal, handwritten rules, offline
 mode, README + LICENSE.

@@ -285,6 +285,7 @@ was removed.
 | `GET /api/levels` | paginated list (`[]` without Supabase) |
 | `GET /api/levels/[id]` | one level + public image URL |
 | `GET /api/health` | provider, model, reachability, `hasSupabase` |
+| `POST /api/arena/map` | §10: `{mode:'theme', theme?, options?}` or `{mode:'drawing', marks, cleanImage, somImage, options?}` → `{ map, source: 'model' \| 'procedural', note? }`; never fails a valid request |
 
 Rate limiting: best-effort per-instance limiter + client cooldown (one parse
 at a time, 5 s). Gemini free-tier limits are the real ceiling.
@@ -324,3 +325,66 @@ Phase 2. Check `/api/parse` latency against `maxDuration`.
 - An open-vocabulary doodle (e.g. cactus) becomes the right role.
 - No server secret in the client bundle.
 - Public repo, MIT LICENSE, complete README.
+
+---
+
+## 10. Ink Arena (multiplayer, `/arena`)
+
+A Mini Militia-style jetpack shooter on the same paper. Additive: the
+platformer loop is untouched. Decisions and test numbers: `DECISIONS.md`
+D18 to D21.
+
+### 10.1 Rooms and netcode
+- **Login:** nickname + scarf colour (localStorage); one id per tab
+  (sessionStorage) so two tabs are two players; Supabase anonymous sign-in
+  when enabled on the project.
+- **Transport** (`src/lib/arena/net.ts`): Supabase Realtime channel
+  `arena:<ROOM>` (broadcast `m` for game traffic, presence for the roster
+  and kills/deaths). Watchdog: rebuild channel and socket when not joined
+  for 4 s, when nothing arrives for 6 s while others are present, or when
+  the tab becomes visible; re-track presence after every join; 10 Hz state
+  is dropped while disconnected (no REST fallback). Fallback transport:
+  `BroadcastChannel` (no Supabase, offline, or `?local=1`).
+- **Messages:** `st` (10 Hz: position, aim, hp, weapon, shield, shots, sender
+  clock, map round, name/colour, join time, `away`; from the host also
+  monsters `n/ns` and bots `b/bs/bn`), `die`, `npcdie`, `pick`, `map`,
+  `needmap`, `bots`.
+- **Model:** each client owns its movement; remotes are interpolated 150 ms
+  behind using the sender's clock; every client simulates every
+  projectile; hits on a player are decided by that player; hits on monsters
+  and bots by the host. Host = earliest joiner among live, visible players,
+  elected every frame. Hidden tabs send ~1/s marked `away` (faded, not
+  targetable). State from another map round is ignored and triggers a map
+  fetch; map rounds are timestamps.
+
+### 10.2 Map (`src/lib/arena/schema.ts`)
+- World 2400×1350, normalized coords. `ArenaMap`: platforms (optional
+  `crumble`), hazards (`lava | water + flow | spikes`), enemies (`walker |
+  flyer | turret`), spawns, pickups (health, ammo, rifle, flamethrower,
+  chainsaw, rockets, grenades, shield, speed, double_jump, jetfuel, damage),
+  rules (gravity, jetpack_power, fire_rate, bullet_damage, night_mode),
+  bots count, optional backdrop (cleaned drawing, small JPEG).
+- `finalizeArena`: clamp everything; floor first; `separate()` platforms
+  (move with fly-through room or drop; cover snaps onto its base); hazards
+  rest on surfaces, never stack, water trimmed at ledges; spawns and crates
+  off hazards and apart.
+- **Map options** (`MapOptions`): monsters 0-8, bots 0-8, pickups
+  few/normal/lots, weapons, buffs, lava, water, spikes, crumble. Sent to
+  Gemma as constraints, enforced by `applyOptions`.
+- **Drawing → arena:** marks labelled `platform | crumble | spikes | lava |
+  water | enemy | spawn | health | ammo | weapon | buff | decoration`;
+  measured zigzags are always spikes; Gemma adds `extras`; `growDrawing`
+  mirrors and fills empty cells so the map covers the page.
+
+### 10.3 Game (`src/game/ArenaScene.ts`)
+- Jump on ground + jetpack (fuel), auto-aim autofire (nearest visible enemy
+  in range; F for manual mouse aim), grenades, weapon crates (`weapons.ts`),
+  timed buffs, hazards, crumbling floors (fall 0.65 s after anyone stands on
+  them, regrow after 5 s).
+- Monsters: 4 s grace, 20 s respawn at a random spot away from players,
+  flyers collide with platforms. Bots: physics bodies on the host; chase,
+  strafe, jetpack over walls and away from lava, wobbly SMG.
+- HUD: HP (+shield), jet %, weapon + ammo, grenades, active buffs, bots
+  control, scoreboard (players + bots), kill feed, live minimap. Full screen
+  on PC; phones go immersive landscape with touch controls (move, jet,
+  grenade) and a rotate prompt in portrait.
