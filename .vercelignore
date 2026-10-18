@@ -1,0 +1,8 @@
+# Never upload local secrets or build/scratch output
+.env*
+!.env.example
+.state/
+.out/
+.next/
+node_modules/
+*.tsbuildinfo

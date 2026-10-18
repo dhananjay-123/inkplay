@@ -46,3 +46,6 @@ next-env.d.ts
 
 # local session state & notes (never commit)
 .state/
+
+.vercel
+.env*
