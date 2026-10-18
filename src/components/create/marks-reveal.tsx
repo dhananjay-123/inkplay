@@ -42,7 +42,7 @@ export function MarksReveal({ image, marks, labels, rescue = [] }: Props) {
   const order = labels?.map((l) => l.id) ?? [];
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden bg-[#F3EEE3] shadow-[var(--shadow)] ring-1 ring-ink/10">
+    <div className="sketch relative aspect-video w-full overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element -- data URL from the vision worker */}
       <img src={image} alt="Your cleaned-up drawing" className="absolute inset-0 h-full w-full object-cover" />
       {marks.slice(0, shown).map((m) => {

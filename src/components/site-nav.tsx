@@ -18,6 +18,12 @@ const PencilIcon = icon(
     <path d="M4 20l4.6-1.2" />
   </>,
 );
+const HomeIcon = icon(
+  <>
+    <path d="M3.5 11.5L12 4l8.5 7.5" />
+    <path d="M6 10v9.5h4.5v-5h3v5H18V10" />
+  </>,
+);
 const MapIcon = icon(
   <>
     <path d="M3.5 6.5l5-2.2 7 2.4 5-2.2v13l-5 2.2-7-2.4-5 2.2z" />
@@ -40,6 +46,7 @@ const QuestionIcon = icon(
 );
 
 const LINKS = [
+  { href: '/', label: 'Home', icon: HomeIcon },
   { href: '/guide', label: 'Guide', icon: MapIcon },
   { href: '/gallery', label: 'Gallery', icon: FramesIcon },
   { href: '/about', label: 'About', icon: QuestionIcon },
@@ -48,13 +55,14 @@ const LINKS = [
 /** The little ink hero, as the logo mark. */
 function HeroMark() {
   return (
-    <svg viewBox="0 0 40 44" className="h-8 w-8 transition-transform group-hover:-translate-y-0.5 group-hover:-rotate-6" aria-hidden>
-      <ellipse cx="20" cy="24" rx="15" ry="17" fill="var(--ink)" />
-      <path d="M7 28 L33 26.5 L37 34" fill="none" stroke="var(--accent)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-      <ellipse cx="14.5" cy="19" rx="4" ry="5" fill="#fff" />
-      <ellipse cx="25.5" cy="19" rx="4" ry="5" fill="#fff" />
-      <circle cx="16" cy="20" r="2" fill="#1a1033" />
-      <circle cx="27" cy="20" r="2" fill="#1a1033" />
+    <svg viewBox="0 0 40 44" className="h-9 w-9 -rotate-6 transition-transform duration-300 group-hover:-translate-y-1 group-hover:rotate-6" aria-hidden>
+      <path d="M8 40 L6 43 M30 40 L33 43" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" />
+      <path d="M20 6 C 31 5, 36 15, 35 25 C 34 35, 28 41, 19 40 C 10 39, 5 33, 5 23 C 5 13, 10 7, 20 6 Z" fill="var(--ink)" />
+      <path d="M6 28 L33 26.5 L38 35" fill="none" stroke="var(--accent)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <ellipse cx="14.5" cy="18" rx="4" ry="5" fill="#fff" />
+      <ellipse cx="25.5" cy="18" rx="4" ry="5" fill="#fff" />
+      <circle cx="16" cy="19" r="2" fill="var(--ink)" />
+      <circle cx="27" cy="19" r="2" fill="var(--ink)" />
     </svg>
   );
 }
@@ -64,8 +72,8 @@ export function SiteNav() {
     <header className="relative z-40 flex h-[var(--nav-h)] shrink-0 items-center justify-between gap-3 px-3 sm:px-8">
       <Link href="/" className="group flex items-center gap-2" aria-label="INKPLAY home">
         <HeroMark />
-        <span className="font-display text-xl font-extrabold tracking-tight">
-          INKPLAY<span className="text-hazard">.</span>
+        <span className="font-display text-2xl font-extrabold tracking-tight">
+          ink<span className="highlight">play</span>
         </span>
       </Link>
       {/* The URL isn't known while prerendering dynamic routes: render without
@@ -88,10 +96,10 @@ function Pending({ children }: { children: React.ReactNode }) {
 }
 
 function NavItems({ path }: { path: string | null }) {
-  const active = (href: string) => path !== null && (path === href || path.startsWith(`${href}/`));
+  const active = (href: string) => path !== null && (path === href || (href !== '/' && path.startsWith(`${href}/`)));
   return (
     <nav className="flex items-center gap-2 sm:gap-3" aria-label="Main">
-      <ul className="flex items-center gap-0.5 rounded-full border-2 border-ink/80 bg-card p-1 shadow-[3px_3px_0_var(--pop)]">
+      <ul className="flex items-center gap-1">
         {LINKS.map((l) => {
           const on = active(l.href);
           return (
@@ -100,8 +108,8 @@ function NavItems({ path }: { path: string | null }) {
                 href={l.href}
                 aria-current={on ? 'page' : undefined}
                 aria-label={l.label}
-                className={`label flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors sm:px-3 ${
-                  on ? 'bg-accent text-accent-ink' : 'text-graphite hover:bg-paper-deep hover:text-ink'
+                className={`font-hand flex items-center gap-1.5 px-2.5 py-1 text-xl transition-[color,rotate] hover:-rotate-2 sm:px-3 ${
+                  on ? 'highlight text-ink' : 'text-graphite hover:text-ink'
                 }`}
               >
                 <Pending>{l.icon}</Pending>
@@ -111,7 +119,7 @@ function NavItems({ path }: { path: string | null }) {
           );
         })}
       </ul>
-      <Link href="/create" aria-current={active('/create') ? 'page' : undefined} className="btn-game label px-3 py-2 sm:px-4">
+      <Link href="/create" aria-current={active('/create') ? 'page' : undefined} className="btn-game btn-sm px-3 py-1.5 sm:px-4">
         <Pending>{PencilIcon}</Pending>
         <span className="hidden sm:inline">Create</span>
       </Link>

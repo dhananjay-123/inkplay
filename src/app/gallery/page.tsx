@@ -12,10 +12,11 @@ const PAGE_SIZE = 24;
 export default function GalleryPage(props: PageProps<'/gallery'>) {
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-8">
-      <p className="label text-graphite">gallery</p>
-      <h1 className="font-display mt-3 text-5xl font-extrabold tracking-tight sm:text-7xl">Hall of Doodles</h1>
-      <p className="font-hand mt-4 max-w-xl text-xl text-graphite">
-        Every level here started as ink on paper. Pick one and play someone else&apos;s imagination.
+      <h1 className="font-display text-5xl font-extrabold tracking-tight sm:text-7xl">
+        Hall of <span className="highlight">Doodles</span>
+      </h1>
+      <p className="mt-4 max-w-xl text-lg text-graphite">
+        Every level here started as ink on someone&apos;s paper. Pick one and play it.
       </p>
       <Suspense fallback={<p className="font-hand mt-12 text-2xl text-graphite">Flipping through the notebook…</p>}>
         <Wall searchParams={props.searchParams} />
@@ -37,22 +38,22 @@ async function Wall({ searchParams }: { searchParams: PageProps<'/gallery'>['sea
 
   return (
     <>
-      <div className="mt-12 columns-1 gap-6 sm:columns-2 lg:columns-3">
+      <div className="mt-14 columns-1 gap-8 sm:columns-2 lg:columns-3">
         {levels.map((l, i) => (
           <DoodleCard key={l.id} level={l} index={i} />
         ))}
       </div>
       <nav className="mt-8 flex justify-between">
         {page > 0 ? (
-          <Link href={`/gallery?page=${page - 1}`} className="label text-graphite hover:text-ink">
-            ← Newer
+          <Link href={`/gallery?page=${page - 1}`} className="btn-ghost btn-sm px-4 py-1.5">
+            Newer
           </Link>
         ) : (
           <span />
         )}
         {levels.length === PAGE_SIZE && (
-          <Link href={`/gallery?page=${page + 1}`} className="label text-graphite hover:text-ink">
-            Older →
+          <Link href={`/gallery?page=${page + 1}`} className="btn-ghost btn-sm px-4 py-1.5">
+            Older
           </Link>
         )}
       </nav>
@@ -62,11 +63,11 @@ async function Wall({ searchParams }: { searchParams: PageProps<'/gallery'>['sea
 
 function Empty({ title }: { title: string }) {
   return (
-    <div className="mt-12 rounded-sm border-2 border-dashed border-graphite/40 px-6 py-16 text-center">
+    <div className="mt-12 rounded-[var(--wobble)] border-2 border-dashed border-graphite/50 bg-card/60 px-6 py-16 text-center">
       <p className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{title}</p>
       <p className="font-hand mt-3 text-xl text-graphite">Draw a level and play it right now. No account, no database.</p>
-      <Link href="/create" className="label mt-8 btn-game px-6 py-4">
-        Start drawing →
+      <Link href="/create" className="btn-game mt-8 px-6 py-3.5 text-lg">
+        Start drawing
       </Link>
     </div>
   );

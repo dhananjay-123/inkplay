@@ -1,60 +1,40 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------
-   INKPLAY tokens — "Living Notebook"
+   INKPLAY tokens: "Sketchbook". Marker ink on cream paper, highlighter,
+   stickers and tape. Light only: the drawing is paper, so is the site.
    Every colour in the UI comes from these variables.
 ------------------------------------------------------------------- */
 :root {
-  --paper: #fff7e6;
-  --paper-deep: #ffe9c2;
-  --ink: #1a1033; /* deep violet ink */
-  --graphite: #6b5e8c;
-  --rule: rgba(26, 16, 51, 0.07);
+  --paper: #fffaf0;
+  --paper-deep: #fdefd2;
+  --ink: #1d1b18; /* warm marker black, same family as the game canvas */
+  --graphite: #6e675c; /* pencil */
+  --rule: rgba(29, 27, 24, 0.13);
   --accent: #b6ff2e; /* highlighter lime */
-  --accent-ink: #1a1033; /* text on bright fills, both themes */
-  --hazard: #ff3b5c;
-  --pop: #7b5cff; /* arcade violet */
-  --sun: #ffc93c;
-  --sky: #2ec5ff;
+  --accent-ink: #1d1b18; /* text on bright fills */
+  --hazard: #ff4a3d; /* tomato */
+  --pop: #2d5bff; /* ballpoint blue: margin notes, power-ups */
+  --sun: #ffcf3f;
+  --sky: #5cc8ff;
+  --bubble: #ff9ec7; /* bubblegum sticky notes */
   --card: #ffffff;
-  /* Mark tags sit on the (always light) drawing, so these never flip in dark mode. */
   --nav-h: 4rem;
-  --tag-platform: #1a1033;
+  /* Mark tags sit on the drawing. */
+  --tag-platform: #1d1b18;
   --tag-hazard: #e8193c;
   --tag-bouncy: #d97706;
   --tag-collectible: #b45309;
-  --tag-powerup: #6d4aff;
+  --tag-powerup: #2d5bff;
   --tag-goal: #15803d;
   --tag-player: #0369a1;
-  --tag-text: #6b5e8c;
-  --shadow: 0 1px 0 rgba(26, 16, 51, 0.08), 0 14px 34px -14px rgba(60, 30, 140, 0.35);
+  --tag-text: #6e675c;
+  --shadow: 0 1px 0 rgba(29, 27, 24, 0.06), 0 14px 30px -18px rgba(70, 45, 10, 0.45);
+  --shadow-hard: 3px 4px 0 var(--ink);
+  /* hand-drawn corners: never quite round, never quite square */
+  --wobble: 14px 5px 16px 6px / 6px 15px 5px 14px;
+  --wobble-btn: 255px 18px 225px 18px / 18px 225px 18px 255px;
   color-scheme: light;
-}
-
-/* Dark = "arcade at midnight" */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #120a2a;
-    --paper-deep: #1c1240;
-    --ink: #fff7e6;
-    --graphite: #a497d0;
-    --rule: rgba(150, 120, 255, 0.1);
-    --pop: #9b82ff;
-    --card: #1f1547;
-    --shadow: 0 1px 0 rgba(255, 255, 255, 0.05), 0 14px 34px -14px rgba(0, 0, 0, 0.8);
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --paper: #120a2a;
-  --paper-deep: #1c1240;
-  --ink: #fff7e6;
-  --graphite: #a497d0;
-  --rule: rgba(150, 120, 255, 0.1);
-  --pop: #9b82ff;
-  --card: #1f1547;
-  --shadow: 0 1px 0 rgba(255, 255, 255, 0.05), 0 14px 34px -14px rgba(0, 0, 0, 0.8);
-  color-scheme: dark;
 }
 
 @theme inline {
@@ -68,6 +48,7 @@
   --color-pop: var(--pop);
   --color-sun: var(--sun);
   --color-sky: var(--sky);
+  --color-bubble: var(--bubble);
   --color-card: var(--card);
   --font-display: var(--font-bricolage);
   --font-hand: var(--font-kalam);
@@ -83,12 +64,11 @@ body {
   background-color: var(--paper);
   color: var(--ink);
   font-family: var(--font-bricolage), system-ui, sans-serif;
-  /* faint notebook grid + grain */
+  /* dotted sketchbook page + a little grain */
   background-image:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
-    linear-gradient(var(--rule) 1px, transparent 1px),
-    linear-gradient(90deg, var(--rule) 1px, transparent 1px);
-  background-size: 160px 160px, 32px 32px, 32px 32px;
+    radial-gradient(circle at 1px 1px, var(--rule) 1.2px, transparent 1.6px);
+  background-size: 160px 160px, 26px 26px;
 }
 
 ::selection {
@@ -96,46 +76,149 @@ body {
   color: var(--accent-ink);
 }
 
-/* Mono labels: uppercase, small, tracked */
+/* Mono labels: for HUD, stats and code-ish bits only, not headings. */
 .label {
   font-family: var(--font-jetbrains), ui-monospace, monospace;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   font-size: 0.72rem;
 }
 
+/* Highlighter swipe: a lopsided stroke behind the lower part of the words. */
 .highlight {
-  background: var(--accent);
-  color: var(--accent-ink);
-  padding: 0 0.15em;
-  box-shadow: 3px 3px 0 var(--pop);
+  padding: 0 0.12em;
+  margin: 0 -0.06em;
+  border-radius: 0.6em 0.2em 0.5em 0.3em;
+  background-image: linear-gradient(176deg, transparent 0 38%, var(--accent) 38% 88%, transparent 88%);
+  color: inherit;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
 
-/* Chunky arcade button: lime, dark outline, violet drop, sinks when pressed */
-.btn-game {
+/* Paper cards with hand-drawn corners */
+.sketch {
+  border: 2px solid var(--ink);
+  border-radius: var(--wobble);
+  background: var(--card);
+  box-shadow: var(--shadow-hard);
+}
+.sketch-soft {
+  border-radius: var(--wobble);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+/* A strip of masking tape across the top edge */
+.tape {
+  position: relative;
+}
+.tape::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 92px;
+  height: 24px;
+  translate: -50% 0;
+  rotate: var(--tape-tilt, -3deg);
+  background: color-mix(in srgb, var(--sun) 55%, transparent);
+  border-left: 2px dotted color-mix(in srgb, var(--paper) 70%, transparent);
+  border-right: 2px dotted color-mix(in srgb, var(--paper) 70%, transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+.tape-pink::before { background: color-mix(in srgb, var(--bubble) 60%, transparent); }
+.tape-blue::before { background: color-mix(in srgb, var(--sky) 50%, transparent); }
+
+/* A number with a pen circle scrawled round it */
+.circled {
+  display: inline-grid;
+  place-items: center;
+  width: 2.4em;
+  height: 2.2em;
+  border: 2.5px solid currentColor;
+  border-radius: 58% 42% 55% 45% / 48% 60% 40% 52%;
+  rotate: -6deg;
+  line-height: 1;
+}
+
+/* Chunky sticker button: lime, ink outline and shadow, sinks when pressed */
+.btn-game,
+.btn-ghost {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  border-radius: 999px;
-  border: 2px solid var(--accent-ink);
-  background: var(--accent);
+  border: 2.5px solid var(--ink);
+  border-radius: var(--wobble-btn);
   color: var(--accent-ink);
-  box-shadow: 4px 4px 0 var(--pop);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, translate 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: var(--shadow-hard);
+  transition: transform 0.15s cubic-bezier(0.3, 1.6, 0.5, 1), box-shadow 0.12s ease, translate 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.btn-game:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 var(--pop);
+.btn-game {
+  background: var(--accent);
+  font-weight: 700;
 }
-.btn-game:active {
-  transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0 var(--pop);
+.btn-ghost {
+  background: var(--card);
+  color: var(--ink);
+}
+.btn-game:hover,
+.btn-ghost:hover {
+  transform: translate(-1px, -2px) rotate(-1.5deg);
+  box-shadow: 5px 6px 0 var(--ink);
+}
+.btn-game:active,
+.btn-ghost:active {
+  transform: translate(3px, 4px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.btn-sm {
+  border-width: 2px;
+  box-shadow: 2px 3px 0 var(--ink);
+}
+.btn-sm:hover {
+  box-shadow: 3px 4px 0 var(--ink);
+}
+
+/* Links with a scrawled underline */
+.link-scrawl {
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: color-mix(in srgb, var(--pop) 70%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 5px;
+}
+.link-scrawl:hover {
+  color: var(--pop);
+}
+
+/* Hero wordmark: letters stuck on one at a time, each jiggles when poked */
+.wordmark .wl {
+  display: inline-block;
+  rotate: var(--r, 0deg);
+  translate: 0 var(--y, 0);
+  transition: rotate 0.3s cubic-bezier(0.3, 1.8, 0.5, 1), translate 0.3s cubic-bezier(0.3, 1.8, 0.5, 1);
+}
+.wordmark .wl:hover {
+  rotate: calc(var(--r, 0deg) * -2.5);
+  translate: 0 calc(var(--y, 0px) - 10px);
+}
+
+/* Little margin doodles that bob in place */
+.bob {
+  animation: bob 5s ease-in-out infinite;
+}
+.bob-slow {
+  animation: bob 7s ease-in-out infinite reverse;
+}
+@keyframes bob {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  50% { translate: 0 -8px; rotate: 6deg; }
 }
 
 :focus-visible {
-  outline: 2px dashed var(--ink);
+  outline: 2.5px dashed var(--pop);
   outline-offset: 3px;
 }
 
@@ -232,6 +315,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .bob, .bob-slow { animation: none; }
   .reveal { opacity: 1; transform: none; }
   .scribble path, .hd-draw { stroke-dashoffset: 0; animation: none; transition: none; }
   .hd-note, .hd-arc { opacity: 1; animation: none; }
@@ -254,7 +338,7 @@ body {
   }
 }
 .ink-cursor {
-  /* ink body + paper outline: inverts with the theme, readable on both */
+  /* ink body + paper outline */
   --cursor-fill: var(--ink);
   --cursor-stroke: var(--paper);
   transition: opacity 0.2s;
@@ -262,7 +346,7 @@ body {
 .ink-cursor-nib {
   transform-origin: 1.5px 1.5px;
   transition: transform 0.18s cubic-bezier(0.2, 1.4, 0.4, 1), filter 0.18s;
-  filter: drop-shadow(2px 2px 0 var(--pop));
+  filter: drop-shadow(2px 2px 0 var(--accent));
 }
 .ink-cursor[data-state="cta"] {
   --cursor-fill: var(--accent);
@@ -279,21 +363,12 @@ body {
 }
 
 /* ------------------------------------------------------------------
-   Intro film (components/home/intro-film.tsx): always a light notebook
-   page, whatever the theme, so the ink hero reads.
+   Intro film (components/home/intro-film.tsx): the same dotted page.
 ------------------------------------------------------------------- */
 .intro-film {
-  --paper: #fff7e6;
-  --ink: #1a1033;
-  --graphite: #6b5e8c;
-  --card: #ffffff;
-  --pop: #7b5cff;
-  color-scheme: light;
   background-color: var(--paper);
-  background-image:
-    linear-gradient(rgba(26, 16, 51, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(26, 16, 51, 0.07) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image: radial-gradient(circle at 1px 1px, var(--rule) 1.2px, transparent 1.6px);
+  background-size: 26px 26px;
   clip-path: inset(0 0 0 0);
 }
 .intro-pip.on {

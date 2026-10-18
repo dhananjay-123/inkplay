@@ -90,7 +90,7 @@ export function PlayScreen({ data }: Props) {
               {level.rules.map((r, i) => (
                 <li
                   key={i}
-                  className="label rotate-[-1deg] bg-accent px-2 py-0.5 text-[0.62rem] text-accent-ink shadow-[2px_2px_0_var(--pop)] odd:rotate-[1deg]"
+                  className="label rotate-[-1deg] rounded-[var(--wobble-btn)] border-2 border-ink bg-accent px-2 py-0.5 text-[0.62rem] text-accent-ink odd:rotate-[1deg]"
                   title="Read from your paper"
                 >
                   {ruleChip(r)} ✓
@@ -103,14 +103,14 @@ export function PlayScreen({ data }: Props) {
           <span title="Deaths">✕ {live.deaths}</span>
           <CoinTracker got={live.coins} total={totalCoins} />
           <span title="Time">{time}</span>
-          <button type="button" onClick={toggleMuted} className="rounded-full border border-current px-3 py-1 hover:bg-ink hover:text-paper" aria-pressed={!muted}>
+          <button type="button" onClick={toggleMuted} className="btn-ghost btn-sm px-3 py-1" aria-pressed={!muted}>
             {muted ? 'Sound off' : 'Sound on'}
           </button>
-          <button type="button" onClick={() => bus.emit('restart')} className="rounded-full border border-current px-3 py-1 hover:bg-ink hover:text-paper">
+          <button type="button" onClick={() => bus.emit('restart')} className="btn-ghost btn-sm px-3 py-1">
             Restart
           </button>
           {id && (
-            <button type="button" onClick={share} className="btn-game px-3 py-1">
+            <button type="button" onClick={share} className="btn-game btn-sm px-3 py-1">
               {copied ? 'Link copied' : 'Share'}
             </button>
           )}
@@ -119,7 +119,7 @@ export function PlayScreen({ data }: Props) {
 
       {/* game: the largest 16:9 box that fits the remaining space */}
       <div className="relative flex min-h-0 flex-1 items-center justify-center [container-type:size]">
-        <div className="relative aspect-video w-[min(100cqw,calc(100cqh*16/9))] overflow-hidden rounded-sm bg-[#F3EEE3] shadow-[var(--shadow)] ring-1 ring-ink/10">
+        <div className="sketch relative aspect-video w-[min(100cqw,calc(100cqh*16/9))] overflow-hidden">
           <PhaserGame data={data} bus={bus} runKey={runKey} className="absolute inset-0" />
           {end && <EndCard stats={end} totalCoins={totalCoins} review={review} onAgain={again} hasId={Boolean(id)} />}
         </div>
@@ -129,8 +129,8 @@ export function PlayScreen({ data }: Props) {
         <p className="font-hand min-w-0 flex-1 truncate text-base text-graphite" title={level.story}>
           {level.story}
         </p>
-        <p className="label hidden shrink-0 text-[0.6rem] text-graphite lg:block">←/→ A/D move · Space W ↑ jump · R restart</p>
-        <button type="button" onClick={() => bus.emit('giveUp')} className="label shrink-0 text-graphite hover:text-ink">
+        <p className="font-hand hidden shrink-0 text-base text-graphite lg:block">arrows or A/D to move, Space to jump, R to restart</p>
+        <button type="button" onClick={() => bus.emit('giveUp')} className="font-hand link-scrawl shrink-0 text-base text-graphite">
           Give up
         </button>
       </div>
@@ -173,8 +173,8 @@ function EndCard({ stats, totalCoins, review, onAgain, hasId }: { stats: RunStat
   const heading = stats.result === 'win' ? 'You beat the paper.' : stats.result === 'timeout' ? 'Out of time.' : 'The ink won.';
   return (
     <div className="absolute inset-0 z-10 grid place-items-center bg-paper/80 p-4 backdrop-blur-[2px]" role="dialog" aria-label="Run summary">
-      <div className="w-full max-w-md rotate-[-0.6deg] bg-card p-6 shadow-[var(--shadow)] ring-1 ring-ink/10 sm:p-8">
-        <p className="label text-graphite">Playtester&apos;s verdict</p>
+      <div className="sketch tape w-full max-w-md rotate-[-1deg] p-6 pt-8 sm:p-8">
+        <p className="font-hand text-lg text-pop">the playtester says</p>
         <h2 className="font-display mt-2 text-3xl font-extrabold tracking-tight">{heading}</h2>
         <p className="label mt-3 tabular-nums text-graphite">
           {stats.timeSeconds.toFixed(1)}s · {stats.deaths} deaths · {totalCoins > 0 ? `${stats.coins}/${totalCoins}` : stats.coins} coins
@@ -182,9 +182,9 @@ function EndCard({ stats, totalCoins, review, onAgain, hasId }: { stats: RunStat
         <div className="mt-5 min-h-[4.5rem]">
           {review ? (
             <>
-              <p className="text-2xl tracking-widest" aria-label={`${review.stars} of 5 stars`}>
-                {'★'.repeat(review.stars)}
-                <span className="text-graphite/40">{'★'.repeat(5 - review.stars)}</span>
+              <p className="text-3xl tracking-widest" aria-label={`${review.stars} of 5 stars`}>
+                <span className="text-sun [-webkit-text-stroke:1.5px_var(--ink)]">{'★'.repeat(review.stars)}</span>
+                <span className="text-graphite/25">{'★'.repeat(5 - review.stars)}</span>
               </p>
               <p className="font-hand mt-2 text-xl leading-snug">{review.verdict}</p>
             </>
@@ -193,15 +193,15 @@ function EndCard({ stats, totalCoins, review, onAgain, hasId }: { stats: RunStat
           )}
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <button type="button" onClick={onAgain} className="label btn-game px-5 py-3">
+          <button type="button" onClick={onAgain} className="btn-game px-5 py-3">
             Play again
           </button>
-          <Link href="/create" className="label rounded-full border border-current px-5 py-3">
-            Remix this level
+          <Link href="/create" className="btn-ghost px-5 py-3">
+            Draw a new one
           </Link>
           {hasId && (
-            <Link href="/gallery" className="label rounded-full px-2 py-3 text-graphite hover:text-ink">
-              Back to gallery
+            <Link href="/gallery" className="font-hand link-scrawl self-center px-1 text-lg text-graphite">
+              back to the gallery
             </Link>
           )}
         </div>

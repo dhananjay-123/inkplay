@@ -40,11 +40,7 @@ export function InkCursor() {
     };
     resize();
 
-    const inkColour = () => getComputedStyle(root).getPropertyValue('--ink').trim() || '#1a1033';
-    let ink = inkColour();
-    const scheme = window.matchMedia('(prefers-color-scheme: dark)');
-    const onScheme = () => (ink = inkColour());
-    scheme.addEventListener('change', onScheme);
+    const ink = getComputedStyle(root).getPropertyValue('--ink').trim() || '#1d1b18';
 
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== 'mouse') return;
@@ -103,7 +99,6 @@ export function InkCursor() {
     return () => {
       cancelAnimationFrame(raf);
       root.classList.remove('ink-cursor-on');
-      scheme.removeEventListener('change', onScheme);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerdown', onDown);
       window.removeEventListener('pointerup', onUp);

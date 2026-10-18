@@ -174,7 +174,7 @@ export function IntroFilm() {
     tl.add(() => {
       bob.pause();
       gsap.to(q('[data-star]'), { rotation: 360, scale: 1.5, duration: 0.6, ease: 'back.out(2)', transformOrigin: '50% 50%' });
-      burst(2930, GROUND - 190, 28, ['var(--accent)', 'var(--pop)', 'var(--sun)', 'var(--sky)', 'var(--hazard)'], 260);
+      burst(2930, GROUND - 190, 28, ['var(--accent)', 'var(--bubble)', 'var(--sun)', 'var(--sky)', 'var(--hazard)'], 260);
       gsap.to(heroBody, { y: -30, duration: 0.18, yoyo: true, repeat: 3, ease: 'power1.out' });
     });
 
@@ -275,9 +275,9 @@ export function IntroFilm() {
           <g transform="translate(2100 560)">
             <g data-bat>
               <g data-pop>
-                <path data-wing fill="var(--pop)" stroke="var(--ink)" strokeWidth="4" d="M-14 -4 C -40 -30, -66 -14, -70 4 C -54 -4, -40 4, -14 8 Z" />
-                <path data-wing fill="var(--pop)" stroke="var(--ink)" strokeWidth="4" d="M14 -4 C 40 -30, 66 -14, 70 4 C 54 -4, 40 4, 14 8 Z" />
-                <ellipse rx="22" ry="20" fill="var(--pop)" stroke="var(--ink)" strokeWidth="4" />
+                <path data-wing fill="var(--sky)" stroke="var(--ink)" strokeWidth="4" d="M-14 -4 C -40 -30, -66 -14, -70 4 C -54 -4, -40 4, -14 8 Z" />
+                <path data-wing fill="var(--sky)" stroke="var(--ink)" strokeWidth="4" d="M14 -4 C 40 -30, 66 -14, 70 4 C 54 -4, 40 4, 14 8 Z" />
+                <ellipse rx="22" ry="20" fill="var(--bubble)" stroke="var(--ink)" strokeWidth="4" />
                 <circle cx="-7" cy="-3" r="4" fill="#fff" />
                 <circle cx="7" cy="-3" r="4" fill="#fff" />
                 <circle cx="-6" cy="-2" r="2" fill="var(--ink)" />
@@ -319,7 +319,7 @@ export function IntroFilm() {
       </svg>
 
       {/* film HUD */}
-      <div data-hud className="label absolute top-5 left-5 flex items-center gap-2 rounded-full border-2 border-[var(--ink)] bg-[var(--card)] px-3 py-1.5 text-[var(--ink)] shadow-[3px_3px_0_var(--pop)] sm:top-8 sm:left-8">
+      <div data-hud className="label absolute top-5 left-5 flex items-center gap-2 rounded-[var(--wobble-btn)] border-2 border-[var(--ink)] bg-[var(--card)] px-3 py-1.5 text-[var(--ink)] shadow-[var(--shadow-hard)] sm:top-8 sm:left-8">
         <span>$</span>
         {COINS.map((_, i) => (
           <span key={i} data-pip className="intro-pip h-2.5 w-2.5 rounded-full border-[1.5px] border-current" />
@@ -333,7 +333,7 @@ export function IntroFilm() {
       <div className="pointer-events-none absolute inset-0 grid place-items-center">
         <div className="text-center">
           <p data-mark className="font-display text-[clamp(4rem,17vw,14rem)] leading-[0.85] font-extrabold tracking-[-0.04em] text-[var(--ink)] opacity-0">
-            INKPLAY<span className="text-[var(--hazard)]">.</span>
+            INKPLAY
           </p>
           <p data-tag className="font-display mt-4 text-2xl text-[var(--ink)] opacity-0 sm:text-3xl">
             Draw it. <span className="highlight">Write the rules.</span> Play it.
@@ -342,7 +342,7 @@ export function IntroFilm() {
       </div>
 
       <button type="button" className="btn-game label absolute right-5 bottom-5 px-4 py-2 sm:right-8 sm:bottom-8">
-        Skip →
+        Skip
       </button>
     </div>
   );

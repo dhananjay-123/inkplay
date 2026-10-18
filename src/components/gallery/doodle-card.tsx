@@ -11,8 +11,8 @@ export function DoodleCard({ level, index }: { level: SavedLevel; index: number 
   return (
     <Link
       href={`/play/${level.id}`}
-      style={{ '--tilt': `${tilt * 0.6}deg` } as React.CSSProperties}
-      className="doodle-card group mb-6 block break-inside-avoid rounded-sm bg-card p-3 pb-4 shadow-[var(--shadow)]"
+      style={{ '--tilt': `${tilt * 0.6}deg`, '--tape-tilt': `${-tilt}deg` } as React.CSSProperties}
+      className={`doodle-card tape ${['', 'tape-pink', 'tape-blue'][index % 3]} group mb-8 block break-inside-avoid rounded-[3px] bg-card p-3 pb-4 shadow-[var(--shadow)]`}
     >
       <div className="relative overflow-hidden rounded-[2px] bg-paper-deep">
         {/* Supabase public URL; next/image would need remotePatterns per project. */}
@@ -22,10 +22,10 @@ export function DoodleCard({ level, index }: { level: SavedLevel; index: number 
           alt={`Hand-drawn level: ${level.title}`}
           loading="lazy"
           decoding="async"
-          className="block h-auto w-full mix-blend-multiply transition-transform duration-500 group-hover:scale-[1.03] dark:mix-blend-normal dark:invert"
+          className="block h-auto w-full mix-blend-multiply transition-transform duration-500 group-hover:scale-[1.03]"
         />
-        <span className="label absolute top-2 right-2 rounded-full bg-accent px-2 py-1 text-[0.6rem] text-accent-ink opacity-0 transition-opacity group-hover:opacity-100">
-          Play →
+        <span className="btn-game btn-sm absolute right-2 bottom-2 px-3 py-0.5 text-sm opacity-0 transition-opacity group-hover:opacity-100">
+          Play
         </span>
       </div>
       <h2 className="font-hand mt-3 text-2xl leading-tight">{level.title}</h2>

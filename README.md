@@ -72,7 +72,7 @@ apps) both work.
 ## How it works
 
 ```
- photo / webcam / sample
+ photo / canvas / sample
           │
           ▼
  ┌──────────────────────── browser (Web Worker) ───────────────────────┐
