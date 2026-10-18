@@ -11,7 +11,9 @@
     "demo": "cross-env MODEL_PROVIDER=ollama next start",
     "test:model": "tsx --conditions=react-server scripts/test-model.ts",
     "test:vision": "tsx scripts/test-vision.ts",
-    "samples": "python scripts/gen-samples.py"
+    "samples": "python scripts/gen-samples.py",
+    "test:arena": "tsx --conditions=react-server scripts/test-arena.ts",
+    "test:realtime": "tsx scripts/test-realtime.ts"
   },
   "dependencies": {
     "@google/genai": "^2.30.0",

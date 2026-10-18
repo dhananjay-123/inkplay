@@ -45,8 +45,16 @@ const QuestionIcon = icon(
   </>,
 );
 
+const SwordsIcon = icon(
+  <>
+    <path d="M4 4l9.5 9.5M4 4h3.5L17 13.5M4 4v3.5L13.5 17" />
+    <path d="M14.5 17.5l3-3M16 19.5l3.5-3.5M18 18l2 2" />
+  </>,
+);
+
 const LINKS = [
   { href: '/', label: 'Home', icon: HomeIcon },
+  { href: '/arena', label: 'Arena', icon: SwordsIcon },
   { href: '/guide', label: 'Guide', icon: MapIcon },
   { href: '/gallery', label: 'Gallery', icon: FramesIcon },
   { href: '/about', label: 'About', icon: QuestionIcon },

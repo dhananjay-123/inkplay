@@ -2,7 +2,7 @@
  * Tiny synthesized sound effects (Web Audio). Nothing to download, so they
  * work offline and add zero bytes to the bundle. Muted by default.
  */
-export type Sfx = 'jump' | 'coin' | 'death' | 'win' | 'click' | 'bounce' | 'stomp';
+export type Sfx = 'jump' | 'coin' | 'death' | 'win' | 'click' | 'bounce' | 'stomp' | 'shoot' | 'hurt';
 
 let ctx: AudioContext | null = null;
 let muted = true;
@@ -66,5 +66,7 @@ export function play(s: Sfx): void {
     case 'death': noise(0.35, 0.2); return tone(300, 70, 0.4, 'sawtooth', 0.06);
     case 'win': [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.18, 'triangle', 0.09, i * 0.1)); return;
     case 'click': return tone(700, 500, 0.05, 'triangle', 0.05);
+    case 'shoot': return tone(900, 180, 0.06, 'square', 0.035);
+    case 'hurt': return tone(220, 110, 0.1, 'sawtooth', 0.06);
   }
 }

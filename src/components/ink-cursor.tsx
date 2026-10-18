@@ -5,6 +5,8 @@ import { useEffect, useRef } from 'react';
 const TRAIL_MS = 600;
 const INTERACTIVE = 'a, button, [role="button"], summary, label, select, input[type="file"]';
 const TEXTY = 'input:not([type="file"]):not([type="button"]):not([type="submit"]), textarea, [contenteditable="true"]';
+/** Games that draw their own crosshair (the arena). */
+const GAME = '[data-game-cursor]';
 
 /**
  * Pen-nib cursor with a short ink trail. Grows and turns lime over anything
@@ -52,7 +54,7 @@ export function InkCursor() {
       }
       if (!reduced) pts.push({ x, y, t: performance.now() });
       const el = e.target instanceof Element ? e.target : null;
-      const next = el?.closest(TEXTY) ? 'hidden' : el?.closest(INTERACTIVE) ? 'cta' : 'idle';
+      const next = el?.closest(TEXTY) || el?.closest(GAME) ? 'hidden' : el?.closest(INTERACTIVE) ? 'cta' : 'idle';
       if (next !== state) nib.dataset.state = state = next; // touch the DOM only on change
       wake();
     };
