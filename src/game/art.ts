@@ -18,15 +18,15 @@ function canvas(w: number, h: number): HTMLCanvasElement {
   return c;
 }
 
-/** The hero: a sketchy ink blob with eyes and a highlighter scarf. */
-export function drawPlayer(): HTMLCanvasElement {
+/** The hero: a sketchy ink blob with eyes and a highlighter scarf (arena players get their own scarf colour). */
+export function drawPlayer(scarf: string = PALETTE.accent): HTMLCanvasElement {
   const c = canvas(56, 64);
   const rc = rough.canvas(c);
   const ctx = c.getContext('2d')!;
   rc.ellipse(28, 36, 38, 46, { fill: PALETTE.ink, fillStyle: 'solid', stroke: PALETTE.ink, strokeWidth: 2, roughness: 1.4, seed: 7 });
   // scarf
-  rc.line(12, 42, 44, 40, { stroke: PALETTE.accent, strokeWidth: 6, roughness: 1.2, seed: 3 });
-  rc.line(40, 41, 50, 52, { stroke: PALETTE.accent, strokeWidth: 5, roughness: 1.2, seed: 4 });
+  rc.line(12, 42, 44, 40, { stroke: scarf, strokeWidth: 6, roughness: 1.2, seed: 3 });
+  rc.line(40, 41, 50, 52, { stroke: scarf, strokeWidth: 5, roughness: 1.2, seed: 4 });
   // eyes
   ctx.fillStyle = '#fff';
   ctx.beginPath(); ctx.ellipse(21, 28, 5.5, 6.5, 0, 0, Math.PI * 2); ctx.fill();
@@ -121,4 +121,53 @@ export function cutOut(bg: HTMLCanvasElement, box: BBox, protect: BBox[], pad = 
   octx.putImageData(sprite, 0, 0);
   bctx.putImageData(src, x0, y0);
   return out;
+}
+
+/* ---------- arena ---------- */
+
+/** Arena scarf colours (canvas mirrors of the --accent/--pop/--hazard/--sun/--sky/--bubble/--tag-* tokens). */
+export const ARENA_COLORS = ['#B6FF2E', '#2D5BFF', '#FF4A3D', '#FFCF3F', '#5CC8FF', '#FF9EC7', '#15803D', '#D97706'] as const;
+
+export function drawPickup(kind: 'health' | 'ammo'): HTMLCanvasElement {
+  const c = canvas(40, 40);
+  const rc = rough.canvas(c);
+  if (kind === 'health') {
+    rc.rectangle(4, 6, 32, 28, { fill: '#FFFFFF', fillStyle: 'solid', stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.3, seed: 31 });
+    rc.line(20, 12, 20, 28, { stroke: PALETTE.hazard, strokeWidth: 6, roughness: 0.6, seed: 32 });
+    rc.line(12, 20, 28, 20, { stroke: PALETTE.hazard, strokeWidth: 6, roughness: 0.6, seed: 33 });
+  } else {
+    rc.rectangle(4, 10, 32, 22, { fill: '#FFCF3F', fillStyle: 'hachure', hachureGap: 4, stroke: PALETTE.ink, strokeWidth: 2.5, roughness: 1.3, seed: 41 });
+    for (let i = 0; i < 3; i++) rc.line(12 + i * 8, 4, 12 + i * 8, 14, { stroke: PALETTE.ink, strokeWidth: 3, roughness: 0.6, seed: 42 + i });
+  }
+  return c;
+}
+
+/**
+ * The whole arena as one texture: dotted paper, an optional sample drawing
+ * faintly underneath, and marker-hatched platforms on top.
+ */
+export function drawArena(
+  size: { width: number; height: number },
+  platforms: BBox[],
+  under?: HTMLImageElement,
+): HTMLCanvasElement {
+  const c = canvas(size.width, size.height);
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#FFFAF0';
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillStyle = 'rgba(29, 27, 24, 0.16)';
+  for (let y = 24; y < c.height; y += 32) for (let x = 24; x < c.width; x += 32) ctx.fillRect(x, y, 2.4, 2.4);
+  if (under) {
+    ctx.globalAlpha = 0.28;
+    ctx.drawImage(under, 0, 0, c.width, c.height);
+    ctx.globalAlpha = 1;
+  }
+  const rc = rough.canvas(c);
+  platforms.forEach((p, i) => {
+    rc.rectangle(p.x * c.width, p.y * c.height, p.w * c.width, p.h * c.height, {
+      fill: PALETTE.ink, fillStyle: 'hachure', hachureGap: 6, hachureAngle: -41 + (i % 3) * 9,
+      stroke: PALETTE.ink, strokeWidth: 3, roughness: 1.4, seed: 100 + i,
+    });
+  });
+  return c;
 }

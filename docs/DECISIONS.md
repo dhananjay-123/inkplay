@@ -151,3 +151,31 @@ decision, why.
   server and model never need to know where the picture came from, and
   templates need no account or database (golden rule).
 
+
+### D18 — Ink Arena: multiplayer on Supabase Realtime, additive
+- **Decision:** a new `/arena` mode (Mini Militia-style: jetpack, autofire,
+  respawn) next to the platformer, which is untouched. Transport is a
+  Supabase Realtime channel `arena:<ROOM>` (broadcast for game traffic,
+  presence for roster + kills/deaths); with no Supabase or `?local=1` it
+  falls back to `BroadcastChannel` between tabs of one browser, so the
+  offline demo still has multiplayer.
+- **Netcode:** each client simulates itself and sends state at 10 Hz with
+  the shots fired since the last tick; others are drawn 120 ms behind,
+  interpolated. Bullets are simulated everywhere; the *victim* decides hits
+  and broadcasts `die(killer)`. Map sync: whoever has the map answers
+  `needmap` after a random delay; higher `round` wins.
+- **Autofire:** Mini Militia rule: fires when an enemy is within ~24° of
+  your aim, in range and in line of sight (ray vs platform rects). Mouse
+  click still fires manually; touch aims at the nearest enemy.
+- **Maps are data:** Gemma returns platforms/spawns/pickups (theme mode) or
+  labels per mark (drawing mode); `src/lib/arena/schema.ts` clamps every
+  number, adds a floor, lands spawns on platforms, and re-validates maps
+  received from other players. Model failure → seeded procedural map, so
+  `/api/arena/map` never blocks a room.
+- **Login:** nickname + scarf colour; per-tab id so two tabs are two
+  players. Supabase anonymous sign-in is attempted but is **disabled on the
+  project** (422), so it's a guest id today; enable it in Supabase →
+  Authentication → Sign In / Providers to get real anon users.
+- **Why:** Vercel functions can't hold websockets; Realtime broadcast with
+  the anon key measured ~50 ms between two clients (`pnpm test:realtime`).
+  Gemma theme maps take ~23 s, drawing maps 8–11 s (`pnpm test:arena`).

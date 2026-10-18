@@ -50,8 +50,16 @@ export function extractJSON(text: string): unknown {
   } catch {
     const start = body.indexOf('{');
     const end = body.lastIndexOf('}');
-    if (start >= 0 && end > start) return JSON.parse(body.slice(start, end + 1));
-    throw new Error('no JSON object found in model output');
+    if (start < 0 || end <= start) throw new Error('no JSON object found in model output');
+    const slice = body.slice(start, end + 1);
+    try {
+      return JSON.parse(slice);
+    } catch (e) {
+      // Gemma sometimes writes a flag rule as {"kind": "night_mode": null}.
+      const repaired = slice.replace(/("kind"\s*:\s*"[a-z_]+")\s*:\s*(?:null|true|false|"[^"]*"|-?[\d.]+)/g, '$1');
+      if (repaired === slice) throw e;
+      return JSON.parse(repaired);
+    }
   }
 }
 

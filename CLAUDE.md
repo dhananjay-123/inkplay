@@ -49,6 +49,8 @@ in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 | `pnpm demo` | `MODEL_PROVIDER=ollama next start` — offline stage demo |
 | `pnpm test:model` | Phase 1 smoke test against the configured provider |
 | `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm test:arena [theme]` | Gemma designs one arena map |
+| `pnpm test:realtime` | Two Supabase Realtime clients + anon sign-in check |
 
 ## Layout
 
@@ -57,12 +59,14 @@ src/
   app/                 routes (App Router) + api/ route handlers
   components/          React UI (design layer): home/ (intro film, playground,
                        doodles), create/, game/, gallery/, guide/, nav, cursor
-  game/                Phaser 3 scenes, client-only
+  game/                Phaser 3 scenes, client-only (LevelScene, ArenaScene)
   lib/
     env.ts             Zod-validated env, provider + hasSupabase flags
     schema.ts          Level / MarkLabel / Rule schemas + clamping
     fixer.ts           post-parse auto-fixer (player, goal, reachability)
     ai/                provider abstraction (gemini | ollama) + prompts
+    arena/             multiplayer arena: map schema + clamping, procedural
+                       fallback, Realtime / BroadcastChannel transport
     vision/            OpenCV.js preprocessing, set-of-marks rendering
     editor/            in-browser level canvas: scene + PNG export,
                        doodle library, templates/draft in localStorage
