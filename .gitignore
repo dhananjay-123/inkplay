@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local outputs
 .out/
+
+# local session state & notes (never commit)
+.state/
