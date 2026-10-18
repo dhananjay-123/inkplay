@@ -26,7 +26,9 @@ export type ArenaSceneConfig = {
   bus: ArenaBus;
   handFont: string;
   autofire: boolean;
-  host: boolean;
+  /** The map's round + author: state from players on another map is ignored. */
+  round: number;
+  mapFrom: string;
 };
 
 const W = ARENA_WORLD.width;
@@ -47,7 +49,10 @@ const BASE = {
   respawnMs: 3000,
   protectMs: 1500,
   sendMs: 100,
-  interpMs: 120,
+  /** Remote players are drawn this far in the past (two send intervals + jitter). */
+  interpMs: 150,
+  /** A remote with no message for this long has left. Hidden tabs keep sending ~1/s. */
+  staleMs: 5000,
   pickupRespawnMs: 15000,
   /** Auto-aim locks onto targets this close (the trigger also needs the weapon's reach). */
   lockRange: 900,
@@ -55,7 +60,11 @@ const BASE = {
   spikeHit: 30,
   crumbleMs: 650,
   regrowMs: 5000,
-  npcRespawnMs: 9000,
+  /** Monsters come back this long after dying, at a random spot away from players. */
+  npcRespawnMs: 20000,
+  /** Grace period after a map starts before the first monsters appear (staggered). */
+  npcGraceMs: 4000,
+  npcSafeDist: 420,
 } as const;
 
 const SCALE = 0.7; // drawPlayer canvas is 56x64
@@ -77,6 +86,12 @@ type Remote = Target & {
   buf: (Snap & { hp: number; alive: boolean; jet: boolean; w: number; sh: boolean })[];
   last: number;
   color: string;
+  name: string;
+  /** Smallest (receive time - sender clock) seen: maps sender timestamps onto our clock without jitter. */
+  offset: number;
+  away: boolean;
+  /** Join time, for electing the room host. */
+  j: number;
 };
 
 type Npc = Target & {
@@ -141,7 +156,10 @@ export class ArenaScene extends Phaser.Scene {
   private pickups: Pickup[] = [];
   private pendingShots: Shot[] = [];
   private pendingNpcShots: NpcShot[] = [];
+  /** This client simulates the monsters (elected each frame: earliest joiner still playing). */
   private host = false;
+  private lastSentAt = 0;
+  private minimap!: Phaser.GameObjects.Graphics;
   // ---- me
   private hp: number = BASE.hp;
   private shieldHp = 0;
@@ -180,7 +198,6 @@ export class ArenaScene extends Phaser.Scene {
     this.cfg = cfg;
     this.t = arenaTuning(cfg.map.rules);
     this.autofire = cfg.autofire;
-    this.host = cfg.host;
     this.remotes = new Map();
     this.npcs = [];
     this.projs = [];
@@ -262,11 +279,11 @@ export class ArenaScene extends Phaser.Scene {
         x: hx,
         y: hy,
         hp: ENEMY[e.kind].hp,
-        alive: true,
+        alive: false,
         aim: 0,
         nextShot: 0,
-        respawnAt: 0,
-        sprite: this.add.image(hx, hy, key).setScale(0.75).setDepth(17),
+        respawnAt: performance.now() + BASE.npcGraceMs + i * 1500,
+        sprite: this.add.image(hx, hy, key).setScale(0.75).setDepth(17).setVisible(false),
         gfx: this.add.graphics().setDepth(18),
         buf: [],
       };
@@ -322,15 +339,22 @@ export class ArenaScene extends Phaser.Scene {
     // ---------- network + React
     this.unsub.push(
       net.onMessage((m) => this.onNet(m)),
+      // Presence only refreshes names/colours. Players are added and removed by
+      // their own state messages: presence can briefly drop someone who is
+      // still playing, which used to make them vanish for some viewers.
       bus.on('peers', (list) => {
         this.metas = new Map(list.map((p) => [p.id, p]));
-        for (const [rid, r] of this.remotes) if (!this.metas.has(rid)) this.dropRemote(r);
         for (const r of this.remotes.values()) this.refreshRemoteLook(r);
       }),
       bus.on('touch', (t) => Object.assign(this.touch, t)),
       bus.on('autofire', (on) => (this.autofire = on)),
-      bus.on('host', (on) => (this.host = on)),
     );
+    // Keepalive: a hidden tab stops Phaser's loop; keep telling the room we're here (marked away).
+    const keepalive = window.setInterval(() => {
+      if (performance.now() - this.lastSentAt > 450) this.sendState(true);
+    }, 500);
+    this.unsub.push(() => window.clearInterval(keepalive));
+    this.buildMinimap();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.unsub.forEach((u) => u()));
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.unsub.forEach((u) => u()));
   }
@@ -535,10 +559,28 @@ export class ArenaScene extends Phaser.Scene {
     const now = performance.now();
     if (!force && now < this.nextSend) return;
     this.nextSend = now + BASE.sendMs;
+    this.lastSentAt = now;
     const b = this.player.body;
+    const { me, round, mapFrom } = this.cfg;
+    const hidden = typeof document !== 'undefined' && document.hidden;
+    const hostPart = this.host && !hidden && this.npcs.length
+      ? {
+          n: this.npcs.map((n): NpcState => [n.id, Math.round(n.x), Math.round(n.y), Math.round(n.hp), n.alive ? 1 : 0, +n.aim.toFixed(2)]),
+          ns: this.pendingNpcShots,
+        }
+      : {};
+    this.pendingNpcShots = [];
     this.cfg.net.send({
       t: 'st',
-      id: this.cfg.me.id,
+      id: me.id,
+      ts: Math.round(now),
+      r: round,
+      mf: mapFrom,
+      nm: me.name,
+      c: me.color,
+      j: me.joinedAt,
+      away: hidden,
+      ...hostPart,
       x: Math.round(this.player.x),
       y: Math.round(this.player.y),
       vx: Math.round(b.velocity.x),
@@ -552,44 +594,59 @@ export class ArenaScene extends Phaser.Scene {
       shots: this.pendingShots,
     });
     this.pendingShots = [];
-    if (this.host && this.npcs.length) {
-      const s: NpcState[] = this.npcs.map((n) => [n.id, Math.round(n.x), Math.round(n.y), Math.round(n.hp), n.alive ? 1 : 0, +n.aim.toFixed(2)]);
-      this.cfg.net.send({ t: 'npc', s, shots: this.pendingNpcShots });
-      this.pendingNpcShots = [];
+  }
+
+  /** Earliest joiner among the players actually here (and not in a background tab) runs the monsters. */
+  private electHost(now: number): boolean {
+    const me = this.cfg.me;
+    if (typeof document !== 'undefined' && document.hidden) return false;
+    let best = { j: me.joinedAt, id: me.id };
+    for (const r of this.remotes.values()) {
+      if (r.away || now - r.last > 2500) continue;
+      if (r.j < best.j || (r.j === best.j && r.id < best.id)) best = { j: r.j, id: r.id };
     }
+    return best.id === me.id;
   }
 
   /* ---------------- network ---------------- */
 
-  private remote(id: string): Remote {
+  private remote(id: string, name: string, color: string): Remote {
     let r = this.remotes.get(id);
     if (r) return r;
-    const meta = this.metas.get(id);
-    const color = meta?.color ?? PALETTE.graphite;
     r = {
       id,
       sprite: this.add.image(0, 0, this.heroTexture(color)).setScale(SCALE).setDepth(18),
       gfx: this.add.graphics().setDepth(19),
-      label: this.nameTag(meta?.name ?? '...').setDepth(22),
+      label: this.nameTag(name).setDepth(22),
       buf: [],
       last: performance.now(),
       x: -999,
       y: -999,
       alive: true,
       color,
+      name,
+      offset: Infinity,
+      away: false,
+      j: Number.MAX_SAFE_INTEGER,
     };
     this.remotes.set(id, r);
     return r;
   }
 
+  private setLook(r: Remote, name: string, color: string) {
+    if (color !== r.color && /^#[0-9A-Fa-f]{6}$/.test(color)) {
+      r.color = color;
+      r.sprite.setTexture(this.heroTexture(color));
+    }
+    if (name && name !== r.name) {
+      r.name = name.slice(0, 16);
+      r.label.setText(r.name);
+    }
+  }
+
   private refreshRemoteLook(r: Remote) {
     const meta = this.metas.get(r.id);
-    if (!meta) return;
-    if (meta.color !== r.color) {
-      r.color = meta.color;
-      r.sprite.setTexture(this.heroTexture(meta.color));
-    }
-    if (r.label.text !== meta.name) r.label.setText(meta.name);
+    if (meta) this.setLook(r, meta.name, meta.color);
   }
 
   private dropRemote(r: Remote) {
@@ -604,14 +661,46 @@ export class ArenaScene extends Phaser.Scene {
     const now = performance.now();
     if (m.t === 'st') {
       if (m.id === this.cfg.me.id) return;
-      const r = this.remote(m.id);
+      const { round, mapFrom } = this.cfg;
+      if (m.r !== round || m.mf !== mapFrom) {
+        // On another map: don't draw them in the wrong place; fetch theirs if it's newer.
+        if (m.r > round || (m.r === round && m.mf < mapFrom)) this.cfg.bus.emit('newerMap', undefined);
+        const stale = this.remotes.get(m.id);
+        if (stale) this.dropRemote(stale);
+        return;
+      }
+      const r = this.remote(m.id, m.nm ?? '...', m.c ?? PALETTE.graphite);
+      this.setLook(r, m.nm, m.c);
       r.last = now;
-      r.buf.push({ t: now, x: m.x, y: m.y, aim: m.aim, hp: m.hp, alive: m.alive, jet: m.jet, w: m.w ?? 0, sh: !!m.sh });
-      if (r.buf.length > 20) r.buf.splice(0, r.buf.length - 20);
+      r.away = !!m.away;
+      r.j = m.j ?? r.j;
+      // Sender clock -> our clock (removes network jitter from interpolation).
+      const ts = typeof m.ts === 'number' ? m.ts : now;
+      r.offset = Math.min(r.offset, now - ts);
+      const t = ts + r.offset;
+      const lastT = r.buf.length ? r.buf[r.buf.length - 1].t : -Infinity;
+      if (t > lastT) {
+        r.buf.push({ t, x: m.x, y: m.y, aim: m.aim, hp: m.hp, alive: m.alive, jet: m.jet, w: m.w ?? 0, sh: !!m.sh });
+        if (r.buf.length > 20) r.buf.splice(0, r.buf.length - 20);
+      }
       const color = hex(r.color);
       for (const [x, y, a, wi, m10] of m.shots.slice(0, 24)) {
         const w = WEAPON_IDS[wi] ?? 'smg';
         this.addProj(x, y, a, w, Phaser.Math.Clamp((m10 ?? 10) / 10, 0.5, 2), m.id, color);
+      }
+      // Monsters from the room host.
+      if (m.n && !this.host) {
+        for (const [id, x, y, hp, alive, aim] of m.n) {
+          const n = this.npcs[id];
+          if (!n) continue;
+          if (!n.alive && alive) n.buf = []; // respawned elsewhere: jump, don't slide
+          n.buf.push({ t, x, y, aim });
+          if (n.buf.length > 20) n.buf.splice(0, n.buf.length - 20);
+          n.hp = hp;
+          if (n.alive && !alive) this.splat(n.x, n.y, 0x9b5cff);
+          n.alive = alive === 1;
+        }
+        for (const [x, y, a, id] of (m.ns ?? []).slice(0, 24)) this.addProj(x, y, a, 'smg', 0.7, `npc:${id}`, 0x9b5cff);
       }
     } else if (m.t === 'die') {
       const r = this.remotes.get(m.victim);
@@ -622,18 +711,6 @@ export class ArenaScene extends Phaser.Scene {
     } else if (m.t === 'pick') {
       const p = this.pickups[m.i];
       if (p) p.readyAt = now + BASE.pickupRespawnMs;
-    } else if (m.t === 'npc') {
-      if (this.host) return; // two hosts for a moment: keep simulating our own
-      for (const [id, x, y, hp, alive, aim] of m.s) {
-        const n = this.npcs[id];
-        if (!n) continue;
-        n.buf.push({ t: now, x, y, aim });
-        if (n.buf.length > 20) n.buf.splice(0, n.buf.length - 20);
-        n.hp = hp;
-        if (n.alive && !alive) this.splat(n.x, n.y, 0x9b5cff);
-        n.alive = alive === 1;
-      }
-      for (const [x, y, a, id] of m.shots.slice(0, 24)) this.addProj(x, y, a, 'smg', 0.7, `npc:${id}`, 0x9b5cff);
     } else if (m.t === 'npcdie') {
       const n = this.npcs[m.id];
       if (n && n.alive) {
@@ -646,15 +723,23 @@ export class ArenaScene extends Phaser.Scene {
   /* ---------------- enemies ---------------- */
 
   private simulateNpcs(dt: number, now: number, walls: Phaser.Geom.Rectangle[]) {
-    const players: Target[] = [...(this.alive ? [{ x: this.player.x, y: this.player.y, alive: true }] : []), ...[...this.remotes.values()].filter((r) => r.alive)];
+    const players: Target[] = [...(this.alive ? [{ x: this.player.x, y: this.player.y, alive: true }] : []), ...[...this.remotes.values()].filter((r) => r.alive && !r.away)];
     for (const n of this.npcs) {
       const spec = ENEMY[n.kind];
       if (!n.alive) {
         if (now >= n.respawnAt) {
+          const spot = this.npcSpot(n.kind, players, walls);
+          if (!spot) {
+            n.respawnAt = now + 1500; // everywhere is too close to someone: try again soon
+            continue;
+          }
           n.alive = true;
           n.hp = spec.hp;
-          n.x = n.home.x;
-          n.y = n.home.y;
+          n.x = spot.x;
+          n.y = spot.y;
+          n.patrol = spot.patrol;
+          n.nextShot = now + 1200; // a beat before it starts shooting
+          this.spawnPuff(n.x, n.y);
         }
         continue;
       }
@@ -668,17 +753,18 @@ export class ArenaScene extends Phaser.Scene {
           n.x = Phaser.Math.Clamp(n.x, n.patrol[0], n.patrol[1]);
         }
       } else if (n.kind === 'flyer') {
+        let dx: number;
+        let dy: number;
         if (near && near.d < BASE.lockRange) {
           const a = Math.atan2(near.p.y - 60 - n.y, near.p.x - n.x);
           const go = near.d > 220 ? 1 : -0.4;
-          n.x += Math.cos(a) * spec.speed * go * dt;
-          n.y += Math.sin(a) * spec.speed * go * dt;
+          dx = Math.cos(a) * spec.speed * go * dt;
+          dy = Math.sin(a) * spec.speed * go * dt;
         } else {
-          n.x += (n.home.x + Math.sin(now / 1300 + n.id) * 120 - n.x) * dt;
-          n.y += (n.home.y + Math.cos(now / 900 + n.id) * 40 - n.y) * dt;
+          dx = (n.home.x + Math.sin(now / 1300 + n.id) * 120 - n.x) * dt;
+          dy = (n.home.y + Math.cos(now / 900 + n.id) * 40 - n.y) * dt;
         }
-        n.x = Phaser.Math.Clamp(n.x, 30, W - 30);
-        n.y = Phaser.Math.Clamp(n.y, 40, H - 40);
+        this.flyerMove(n, dx, dy, walls, dt);
       }
       if (near && near.d < spec.range && !this.blocked(n.x, n.y, near.p.x, near.p.y, walls)) {
         n.aim = Math.atan2(near.p.y - n.y, near.p.x - n.x);
@@ -695,6 +781,112 @@ export class ArenaScene extends Phaser.Scene {
     }
   }
 
+  /** Flyers collide with platforms: slide along a wall, climb over it when boxed in, and escape if pushed inside one. */
+  private flyerMove(n: Npc, dx: number, dy: number, walls: Phaser.Geom.Rectangle[], dt: number) {
+    const R = 22;
+    const hits = (x: number, y: number) => walls.some((r) => x > r.x - R && x < r.right + R && y > r.y - R && y < r.bottom + R);
+    if (hits(n.x, n.y)) {
+      // stuck inside (spawned or shoved): float straight up and out
+      n.y -= 160 * dt;
+    } else if (!hits(n.x + dx, n.y + dy)) {
+      n.x += dx;
+      n.y += dy;
+    } else if (!hits(n.x + dx, n.y)) {
+      n.x += dx;
+    } else if (!hits(n.x, n.y + dy)) {
+      n.y += dy;
+    } else if (!hits(n.x, n.y - 100 * dt)) {
+      n.y -= 100 * dt; // boxed in: climb over the obstacle
+    }
+    n.x = Phaser.Math.Clamp(n.x, 30, W - 30);
+    n.y = Phaser.Math.Clamp(n.y, 40, H - 40);
+  }
+
+  /** A random place for a monster of this kind, well away from every player. */
+  private npcSpot(kind: EnemyKind, players: Target[], walls: Phaser.Geom.Rectangle[]): { x: number; y: number; patrol: [number, number] | null } | null {
+    const ledges = this.solid.filter((p) => p.width >= 90);
+    for (let i = 0; i < 30; i++) {
+      let x: number;
+      let y: number;
+      let patrol: [number, number] | null = null;
+      if (kind === 'flyer' || !ledges.length) {
+        x = W * (0.08 + Math.random() * 0.84);
+        y = H * (0.12 + Math.random() * 0.5);
+      } else {
+        const p = ledges[Math.floor(Math.random() * ledges.length)];
+        x = p.x + 30 + Math.random() * (p.width - 60);
+        y = p.y - 22;
+        if (kind === 'walker') patrol = [p.x + 20, p.right - 20];
+      }
+      // keep clear of walls (a monster body is ~40 px wide)
+      const body = kind === 'flyer' ? { top: y - 26, bottom: y + 26, pad: 26 } : { top: y - 24, bottom: y + 18, pad: 20 };
+      if (walls.some((r) => x > r.x - body.pad && x < r.right + body.pad && r.y < body.bottom && r.bottom > body.top)) continue;
+      if (this.zones.some((z) => z.kind !== 'water' && Phaser.Geom.Rectangle.Contains(z.rect, x, y + 20))) continue;
+      if (players.some((pl) => Math.hypot(pl.x - x, pl.y - y) < BASE.npcSafeDist)) continue;
+      return { x, y, patrol };
+    }
+    return null;
+  }
+
+  private spawnPuff(x: number, y: number) {
+    const ring = this.add.circle(x, y, 10, 0x9b5cff, 0.35).setDepth(16).setStrokeStyle(3, 0x9b5cff);
+    this.tweens.add({ targets: ring, scale: 4, alpha: 0, duration: 500, ease: 'Cubic.out', onComplete: () => ring.destroy() });
+  }
+
+  /* ---------------- minimap ---------------- */
+
+  private static readonly MINI = { x: 12, y: 12, w: 224, h: 126 };
+
+  /** Platforms + hazards drawn once into a small texture; live dots drawn every frame on top. */
+  private buildMinimap() {
+    const { w, h, x, y } = ArenaScene.MINI;
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const g = c.getContext('2d')!;
+    g.fillStyle = 'rgba(255,250,240,0.72)';
+    g.fillRect(0, 0, w, h);
+    const sx = w / W;
+    const sy = h / H;
+    for (const z of this.zones) {
+      g.fillStyle = z.kind === 'water' ? 'rgba(92,200,255,0.55)' : 'rgba(255,74,61,0.85)';
+      g.fillRect(z.rect.x * sx, z.rect.y * sy, Math.max(2, z.rect.width * sx), Math.max(2, z.rect.height * sy));
+    }
+    g.fillStyle = 'rgba(29,27,24,0.75)';
+    for (const r of this.solid) g.fillRect(r.x * sx, r.y * sy, Math.max(1.5, r.width * sx), Math.max(1.5, r.height * sy));
+    g.fillStyle = 'rgba(110,103,92,0.6)';
+    for (const cr of this.crumbles) g.fillRect(cr.rect.x * sx, cr.rect.y * sy, Math.max(1.5, cr.rect.width * sx), Math.max(1.5, cr.rect.height * sy));
+    g.strokeStyle = 'rgba(29,27,24,0.9)';
+    g.lineWidth = 2;
+    g.strokeRect(1, 1, w - 2, h - 2);
+    const key = `minimap-${this.cfg.map.seed}-${this.cfg.round}`;
+    if (!this.textures.exists(key)) this.textures.addCanvas(key, c);
+    this.add.image(x, y, key).setOrigin(0).setScrollFactor(0).setDepth(70).setAlpha(0.9);
+    this.minimap = this.add.graphics().setScrollFactor(0).setDepth(71);
+  }
+
+  private drawMinimap() {
+    const { w, h, x: ox, y: oy } = ArenaScene.MINI;
+    const g = this.minimap;
+    const sx = w / W;
+    const sy = h / H;
+    g.clear();
+    const cam = this.cameras.main;
+    g.lineStyle(1.5, 0x2d5bff, 0.9).strokeRect(ox + cam.scrollX * sx, oy + cam.scrollY * sy, cam.width * sx, cam.height * sy);
+    for (const n of this.npcs) if (n.alive) g.fillStyle(0x9b5cff, 1).fillRect(ox + n.x * sx - 2, oy + n.y * sy - 2, 4, 4);
+    for (const r of this.remotes.values()) {
+      if (!r.alive) continue;
+      g.fillStyle(hex(PALETTE.ink), 1).fillCircle(ox + r.x * sx, oy + r.y * sy, 4);
+      g.fillStyle(hex(r.color), r.away ? 0.4 : 1).fillCircle(ox + r.x * sx, oy + r.y * sy, 3);
+    }
+    if (this.alive) {
+      const px = ox + this.player.x * sx;
+      const py = oy + this.player.y * sy;
+      g.fillStyle(hex(PALETTE.ink), 1).fillCircle(px, py, 5.5);
+      g.fillStyle(hex(this.cfg.me.color), 1).fillCircle(px, py, 4);
+    }
+  }
+
   /* ---------------- frame ---------------- */
 
   update(_time: number, delta: number) {
@@ -706,10 +898,22 @@ export class ArenaScene extends Phaser.Scene {
     pointer.updateWorldPoint(cam);
     const walls = this.walls();
     const renderAt = now - BASE.interpMs;
+    const wasHost = this.host;
+    this.host = this.electHost(now);
+    if (this.host && !wasHost) {
+      // Taking over the monsters: dead ones come back after a cooldown, live ones keep walking.
+      for (const n of this.npcs) {
+        if (!n.alive && n.respawnAt < now) n.respawnAt = now + 5000;
+        if (n.alive && n.kind === 'walker') {
+          const p = this.solid.find((q) => n.x >= q.x && n.x <= q.right && Math.abs(q.y - (n.y + 22)) < 12);
+          n.patrol = p ? [p.x + 20, p.right - 20] : null;
+        }
+      }
+    }
 
     // ---------- remotes: interpolate ~120 ms in the past
     for (const r of this.remotes.values()) {
-      if (now - r.last > 6000) {
+      if (now - r.last > BASE.staleMs) {
         this.dropRemote(r);
         continue;
       }
@@ -718,8 +922,8 @@ export class ArenaScene extends Phaser.Scene {
       r.x = x;
       r.y = y;
       r.alive = r.buf[r.buf.length - 1].alive;
-      r.sprite.setPosition(x, y).setVisible(r.alive);
-      r.label.setPosition(x, y - 36).setVisible(r.alive);
+      r.sprite.setPosition(x, y).setVisible(r.alive).setAlpha(r.away ? 0.4 : 1);
+      r.label.setPosition(x, y - 36).setVisible(r.alive).setAlpha(r.away ? 0.5 : 1);
       r.gfx.clear();
       if (r.alive) this.drawKit(r.gfx, x, y, s.aim, s.hp, s.jet, hex(r.color), s.w, s.sh);
     }
@@ -831,7 +1035,7 @@ export class ArenaScene extends Phaser.Scene {
     if (this.alive) {
       // Auto-aim (Mini Militia): with autofire on, lock onto the nearest
       // enemy (player or monster) in range with a clear line of sight.
-      const targets: Target[] = [...[...this.remotes.values()].filter((r) => r.alive), ...this.npcs.filter((n) => n.alive)];
+      const targets: Target[] = [...[...this.remotes.values()].filter((r) => r.alive && !r.away), ...this.npcs.filter((n) => n.alive)];
       const near = targets
         .map((e) => ({ e, d: Math.hypot(e.x - this.player.x, e.y - this.player.y) }))
         .filter((o) => o.d < BASE.lockRange && !this.blocked(this.player.x, this.player.y, o.e.x, o.e.y, walls))
@@ -889,6 +1093,7 @@ export class ArenaScene extends Phaser.Scene {
 
     this.stepProjectiles(dt, walls, myRect);
     this.drawHazards(now);
+    this.drawMinimap();
 
     // ---------- crosshair + lock-on marker
     this.crosshair.clear();
@@ -974,7 +1179,7 @@ export class ArenaScene extends Phaser.Scene {
     g.clear();
     const meId = this.cfg.me.id;
     const keep: Proj[] = [];
-    const remoteRects = [...this.remotes.values()].filter((r) => r.alive).map((r) => ({ id: r.id, rect: new Phaser.Geom.Rectangle(r.x - BODY.w / 2, r.y - BODY.h / 2, BODY.w, BODY.h) }));
+    const remoteRects = [...this.remotes.values()].filter((r) => r.alive && !r.away).map((r) => ({ id: r.id, rect: new Phaser.Geom.Rectangle(r.x - BODY.w / 2, r.y - BODY.h / 2, BODY.w, BODY.h) }));
     for (const p of this.projs) {
       const w = WEAPONS[p.w];
       p.age += dt;

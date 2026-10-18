@@ -11,16 +11,17 @@ type Props = {
   net: Transport;
   bus: ArenaBus;
   autofire: boolean;
-  /** This client simulates the hostile enemies (later changes go through the bus). */
-  isHost: boolean;
+  /** Map round + author (state from players on other maps is ignored). */
+  round: number;
+  mapFrom: string;
   className?: string;
 };
 
 /** Mounts the arena (client-only; Phaser is imported lazily). Remount with a new `key` per map. */
-export function ArenaGame({ map, me, net, bus, autofire, isHost, className }: Props) {
+export function ArenaGame({ map, me, net, bus, autofire, round, mapFrom, className }: Props) {
   const host = useRef<HTMLDivElement>(null);
   // The scene reads these once at start; later changes go through the bus.
-  const start = useRef({ me, autofire, isHost });
+  const start = useRef({ me, autofire, round, mapFrom });
 
   useEffect(() => {
     let destroyed = false;
@@ -41,7 +42,7 @@ export function ArenaGame({ map, me, net, bus, autofire, isHost, className }: Pr
         banner: false,
         fps: { target: 60 },
       });
-      game.scene.add('arena', ArenaScene, true, { map, me: start.current.me, net, bus, handFont, autofire: start.current.autofire, host: start.current.isHost });
+      game.scene.add('arena', ArenaScene, true, { map, me: start.current.me, net, bus, handFont, autofire: start.current.autofire, round: start.current.round, mapFrom: start.current.mapFrom });
       if (process.env.NODE_ENV !== 'production') (window as unknown as { __arena?: unknown }).__arena = game;
     })().catch((e) => console.error('[arena] failed to start', e));
     return () => {
