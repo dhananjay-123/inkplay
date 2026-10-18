@@ -10,8 +10,8 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 | 1 | Model smoke test (`scripts/test-model.ts`) | 🟡 | Gemini done (5/5 samples, see numbers below); Ollama not installed on this laptop yet |
 | 2 | Skeleton + deploy | 🟡 | Skeleton done; deploy waits on GitHub repo + Vercel project |
 | 3 | Core loop | 🟡 | Verified end to end with real Gemma 4 (cloud); Ollama run pending |
-| 4 | Supabase gallery | ⬜ | Needs a Supabase project |
-| 5 | Design layer | ⬜ | |
+| 4 | Supabase gallery | 🟡 | Code done (schema.sql, `/gallery`, home peek); verify against a real Supabase project |
+| 5 | Design layer | 🟡 | Landing page done; intro film, cursor, transitions pending |
 | 6 | Polish + resilience | ⬜ | |
 | 7 | Ship (README, deploy, `v1.0`) | ⬜ | |
 
@@ -38,11 +38,12 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 - [ ] All 5 samples, both providers
 
 ### Phase 4 — Supabase gallery
-- [ ] `supabase/schema.sql`, storage bucket
-- [ ] Best-effort save, `/gallery`, `/play/[id]`, `record_run`
+- [x] `supabase/schema.sql`, storage bucket
+- [x] Best-effort save, `/gallery`, `/play/[id]`, `record_run` (code; untested against live Supabase)
 
 ### Phase 5 — Design layer
-- [ ] Intro film, cursor, Lenis, landing story, transitions
+- [x] Landing story (hero mini demo, health pill, compare, rules, steps, offline, gallery peek)
+- [ ] Intro film, cursor, Lenis, transitions
 - [ ] Set-of-marks reveal animation, HUD, end card
 - [ ] Mobile layout + touch controls
 

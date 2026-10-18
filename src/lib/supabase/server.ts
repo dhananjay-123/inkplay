@@ -60,7 +60,7 @@ export async function saveLevel(level: PlayableLevel, marks: Mark[], cleanImageB
     const up = await withTimeout(sb.storage.from(BUCKET).upload(path, bytes, { contentType: 'image/jpeg', upsert: false }), 8000);
     if (up.error) throw up.error;
     const ins = await withTimeout(
-      sb.from('levels').insert({ id, title: level.title, difficulty: level.difficulty, level_json: { level, marks }, image_path: path }),
+      sb.from('levels').insert({ id, title: level.title.slice(0, 80), difficulty: level.difficulty, level_json: { level, marks }, image_path: path }),
       8000,
     );
     if (ins.error) throw ins.error;

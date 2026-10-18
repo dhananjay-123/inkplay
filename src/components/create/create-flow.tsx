@@ -195,7 +195,7 @@ export function CreateFlow() {
 
       {phase.kind === 'idle' && (
         <>
-          <h2 className="label mt-14 text-graphite">No pen handy? Try a sample</h2>
+          <h2 id="samples" className="label mt-14 scroll-mt-24 text-graphite">No pen handy? Try a sample</h2>
           <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {SAMPLES.map((s) => (
               <li key={s.id}>

@@ -117,3 +117,80 @@ body {
     transform: scale(1);
   }
 }
+
+/* Gallery polaroids: slight tilt, straighten + lift on hover */
+.doodle-card {
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s;
+}
+.doodle-card:hover,
+.doodle-card:focus-visible {
+  transform: rotate(0deg) translateY(-4px);
+}
+
+/* ------------------------------------------------------------------
+   Scroll reveals (see components/home/reveal.tsx)
+------------------------------------------------------------------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.reveal[data-in] {
+  opacity: 1;
+  transform: none;
+}
+.scribble path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.9s 0.3s cubic-bezier(0.6, 0, 0.2, 1);
+}
+.reveal[data-in] .scribble path {
+  stroke-dashoffset: 0;
+}
+
+/* ------------------------------------------------------------------
+   Hero mini demo (components/home/hero-doodle.tsx)
+------------------------------------------------------------------- */
+.hd-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: hd-draw 0.7s cubic-bezier(0.6, 0, 0.3, 1) forwards;
+}
+.hd-1 { animation-delay: 0.2s; animation-duration: 0.9s; }
+.hd-2 { animation-delay: 1s; }
+.hd-3 { animation-delay: 1.5s; }
+.hd-4 { animation-delay: 1.9s; animation-duration: 0.8s; }
+.hd-5 { animation-delay: 2.6s; }
+.hd-6 { animation-delay: 3.6s; animation-duration: 0.4s; }
+.hd-note {
+  opacity: 0;
+  animation: hd-fade 0.5s 3.1s forwards;
+}
+.hd-arc {
+  opacity: 0;
+  animation: hd-fade 0.4s 4.1s forwards;
+}
+.hd-hero {
+  animation: hd-float 4.5s 4.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes hd-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes hd-fade {
+  to { opacity: 1; }
+}
+/* floaty low-gravity hop from the start to the star and back */
+@keyframes hd-float {
+  0%, 8% { transform: translate(0, 0); }
+  45% { transform: translate(160px, -118px) rotate(8deg); }
+  62%, 72% { transform: translate(316px, -70px); }
+  100% { transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; }
+  .scribble path, .hd-draw { stroke-dashoffset: 0; animation: none; transition: none; }
+  .hd-note, .hd-arc { opacity: 1; animation: none; }
+  .hd-hero { animation: none; }
+}
