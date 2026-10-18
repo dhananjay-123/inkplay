@@ -52,9 +52,18 @@ const SwordsIcon = icon(
   </>,
 );
 
+const RunnerIcon = icon(
+  <>
+    <circle cx="14.5" cy="4.8" r="1.8" />
+    <path d="M9 21l3-5.5 3 2.5v4.5M12 15.5l1-5.5-3.5 1.5L7 14M13 10l2.5 3 3-1" />
+    <path d="M2.5 21h4M18 21h3.5" />
+  </>,
+);
+
 const LINKS = [
   { href: '/', label: 'Home', icon: HomeIcon },
   { href: '/arena', label: 'Arena', icon: SwordsIcon },
+  { href: '/survival', label: 'Survival', icon: RunnerIcon },
   { href: '/guide', label: 'Guide', icon: MapIcon },
   { href: '/gallery', label: 'Gallery', icon: FramesIcon },
   { href: '/about', label: 'About', icon: QuestionIcon },
