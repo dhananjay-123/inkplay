@@ -53,8 +53,9 @@ Use common sense:
 - springy things (springs, trampolines, mushrooms, coils) are bouncy
 - animals, monsters, people other than the hero are enemies; arrows next to them give direction
 - food, money, gems, "$", shiny things are collectibles; special items (chai, lightning, hearts, potions) are powerups
-- a letter P or a stick figure is the player
-- a letter G, a flag, a star or a door is the goal
+- a letter P or a stick figure is the player. Hand-drawn letters are wobbly and often traced over several times: a vertical stem with a loop at its top right is a P, however messy. There is exactly ONE player; if nothing is clearly a P or a figure, pick the mark that looks most like one
+- a letter G, a flag, a star, a trophy or a door is the goal. A door is a tall rectangle or arch, often with a small circle or dot as the handle. There is exactly ONE goal
+- a mark labelled player or goal is never also a platform or an enemy
 - horizontal lines, clouds, boxes and solid shapes are platforms
 - arrows and scribbles that are not objects are decoration
 - words or sentences are rule_text, and you translate them into the allowed rules list

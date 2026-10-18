@@ -37,7 +37,7 @@ export function processDrawing(cv: CV, input: RGBAImage): VisionResult {
     const rgba = keep(new cv.Mat());
     cv.resize(src, rgba, new cv.Size(Math.round(src.cols * scale), Math.round(src.rows * scale)), 0, 0, cv.INTER_AREA);
 
-    const { warped, detected } = warpPaper(cv, rgba, keep);
+    const { warped, detected, content } = warpPaper(cv, rgba, keep);
 
     // ---- normalize lighting: divide by a heavily blurred background estimate
     const gray = keep(new cv.Mat());
@@ -59,6 +59,7 @@ export function processDrawing(cv: CV, input: RGBAImage): VisionResult {
     const k3 = keep(cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3)));
     cv.morphologyEx(mask, mask, cv.MORPH_CLOSE, k3);
     removeSpecks(cv, mask, 40, keep);
+    removeFrameArtifacts(cv, mask, content, keep);
 
     const clean = renderClean(norm, mask);
     const marks = findMarks(cv, mask, keep);
@@ -77,7 +78,9 @@ export function processDrawing(cv: CV, input: RGBAImage): VisionResult {
 
 type Keep = <T extends { delete(): void }>(m: T) => T;
 
-function warpPaper(cv: CV, rgba: CVTypes.Mat, keep: Keep): { warped: CVTypes.Mat; detected: boolean } {
+type Rect = { x: number; y: number; w: number; h: number };
+
+function warpPaper(cv: CV, rgba: CVTypes.Mat, keep: Keep): { warped: CVTypes.Mat; detected: boolean; content: Rect } {
   const quad = findPaperQuad(cv, rgba, keep);
   const warped = keep(new cv.Mat());
   const dsize = new cv.Size(OUT_W, OUT_H);
@@ -86,7 +89,7 @@ function warpPaper(cv: CV, rgba: CVTypes.Mat, keep: Keep): { warped: CVTypes.Mat
     const dstPts = keep(cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, OUT_W, 0, OUT_W, OUT_H, 0, OUT_H]));
     const M = keep(cv.getPerspectiveTransform(srcPts, dstPts));
     cv.warpPerspective(rgba, warped, M, dsize, cv.INTER_LINEAR, cv.BORDER_REPLICATE);
-    return { warped, detected: true };
+    return { warped, detected: true, content: { x: 0, y: 0, w: OUT_W, h: OUT_H } };
   }
   // Fallback: fit the whole frame into 16:9 and pad with paper colour, so a
   // wide or tall page never loses its edges (a crop cut off the P or the goal).
@@ -98,7 +101,7 @@ function warpPaper(cv: CV, rgba: CVTypes.Mat, keep: Keep): { warped: CVTypes.Mat
   const top = Math.floor((OUT_H - h) / 2);
   const left = Math.floor((OUT_W - w) / 2);
   cv.copyMakeBorder(fitted, warped, top, OUT_H - h - top, left, OUT_W - w - left, cv.BORDER_CONSTANT, paperColour(cv, rgba, keep));
-  return { warped, detected: false };
+  return { warped, detected: false, content: { x: left, y: top, w, h } };
 }
 
 /** Mean colour of the brightest frame border: the best guess at the paper. */
@@ -226,6 +229,67 @@ function removeSpecks(cv: CV, mask: CVTypes.Mat, minArea: number, keep: Keep): v
   for (let p = 0; p < L.length; p++) if (small[L[p]]) M[p] = 0;
 }
 
+/**
+ * Drop long thin ink strips hugging the picture's edge: a drawing app's canvas
+ * border, window chrome, the table edge of a photo. They otherwise glue every
+ * doodle that touches them into one giant mark.
+ */
+function removeFrameArtifacts(cv: CV, mask: CVTypes.Mat, r: Rect, keep: Keep): void {
+  const labels = keep(new cv.Mat());
+  const stats = keep(new cv.Mat());
+  const n = cv.connectedComponentsWithStats(mask, labels, stats, keep(new cv.Mat()), 8, cv.CV_32S);
+  const m = Math.max(4, Math.round(Math.min(r.w, r.h) * 0.015));
+  const drop = new Uint8Array(n);
+  let any = false;
+  for (let i = 1; i < n; i++) {
+    const x = stats.intAt(i, cv.CC_STAT_LEFT);
+    const y = stats.intAt(i, cv.CC_STAT_TOP);
+    const w = stats.intAt(i, cv.CC_STAT_WIDTH);
+    const h = stats.intAt(i, cv.CC_STAT_HEIGHT);
+    const nearLR = x <= r.x + m || x + w >= r.x + r.w - m;
+    const nearTB = y <= r.y + m || y + h >= r.y + r.h - m;
+    // The strip itself: along a vertical edge, narrow and tall …
+    const vStrip = nearLR && (x <= r.x + m ? x + w <= r.x + 3 * m : x >= r.x + r.w - 3 * m) && h > r.h * 0.3;
+    // … or along a horizontal edge, flat and wide.
+    const hStrip = nearTB && (y <= r.y + m ? y + h <= r.y + 3 * m : y >= r.y + r.h - 3 * m) && w > r.w * 0.3;
+    if (vStrip || hStrip) {
+      drop[i] = 1;
+      any = true;
+    }
+  }
+  if (!any) {
+    // A border often touches a doodle, making one component; peel the edge
+    // band off instead so the doodle survives.
+    peelEdgeBand(mask, r, m);
+    return;
+  }
+  const L = labels.data32S;
+  const M = mask.data;
+  for (let p = 0; p < L.length; p++) if (drop[L[p]]) M[p] = 0;
+  peelEdgeBand(mask, r, m);
+}
+
+/** Clear ink inside a thin band along the picture edge when it runs most of that edge. */
+function peelEdgeBand(mask: CVTypes.Mat, r: Rect, m: number): void {
+  const M = mask.data;
+  const W = mask.cols;
+  const colInk = (x: number) => {
+    let c = 0;
+    for (let y = r.y; y < r.y + r.h; y++) if (M[y * W + x]) c++;
+    return c / r.h;
+  };
+  const rowInk = (y: number) => {
+    let c = 0;
+    for (let x = r.x; x < r.x + r.w; x++) if (M[y * W + x]) c++;
+    return c / r.w;
+  };
+  const band = Math.min(m, 12);
+  for (let d = 0; d < band; d++) {
+    for (const x of [r.x + d, r.x + r.w - 1 - d]) if (colInk(x) > 0.5) for (let y = r.y; y < r.y + r.h; y++) M[y * W + x] = 0;
+    for (const y of [r.y + d, r.y + r.h - 1 - d]) if (rowInk(y) > 0.5) for (let x = r.x; x < r.x + r.w; x++) M[y * W + x] = 0;
+  }
+}
+
 /** Ink-on-paper rendering with soft, anti-aliased strokes. */
 function renderClean(norm: CVTypes.Mat, mask: CVTypes.Mat): RGBAImage {
   const out = new Uint8ClampedArray(OUT_W * OUT_H * 4);
@@ -254,8 +318,14 @@ function findMarks(cv: CV, mask: CVTypes.Mat, keep: Keep): Mark[] {
   //    the ground is not merged with the ground).
   const thick = keep(new cv.Mat());
   cv.dilate(mask, thick, keep(cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, 5))));
-  const lines = keep(new cv.Mat());
-  cv.morphologyEx(thick, lines, cv.MORPH_OPEN, keep(cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(45, 1))));
+  // Open with line kernels at 0°, ±15° and ±30° so hills and ramps count as
+  // ground too (a P standing on a slope used to merge with it).
+  const lines = keep(cv.Mat.zeros(mask.rows, mask.cols, cv.CV_8U));
+  const opened = keep(new cv.Mat());
+  for (const deg of [0, 15, -15, 30, -30]) {
+    cv.morphologyEx(thick, opened, cv.MORPH_OPEN, lineKernel(cv, 45, deg, keep));
+    cv.bitwise_or(lines, opened, lines);
+  }
   cv.morphologyEx(lines, lines, cv.MORPH_CLOSE, keep(cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(25, 1))));
   cv.bitwise_and(lines, thick, lines);
 
@@ -271,6 +341,8 @@ function findMarks(cv: CV, mask: CVTypes.Mat, keep: Keep): Mark[] {
     const h = lineStats.intAt(i, cv.CC_STAT_HEIGHT);
     isLongLine[i] = w >= OUT_W * 0.06 && w > h * 4 ? 1 : 0;
   }
+  // Sloped kernels also catch the sides of zigzags; spikes keep their own mark.
+  rejectJagged(cv, lineLabels.data32S, lineStats, nLines, isLongLine);
   const LM = lineMask.data;
   const MK = mask.data;
   for (let p = 0; p < LL.length; p++) if (isLongLine[LL[p]] && MK[p]) LM[p] = 255;
@@ -332,6 +404,52 @@ function findMarks(cv: CV, mask: CVTypes.Mat, keep: Keep): Mark[] {
       polyline: topProfile(labels, ink, r),
     };
   });
+}
+
+/** A straight line of length `len` at `deg` degrees, as a morphology kernel. */
+function lineKernel(cv: CV, len: number, deg: number, keep: Keep): CVTypes.Mat {
+  if (deg === 0) return keep(cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(len, 1)));
+  const a = (deg * Math.PI) / 180;
+  const w = Math.max(1, Math.round(Math.abs(Math.cos(a)) * len));
+  const h = Math.max(1, Math.round(Math.abs(Math.sin(a)) * len));
+  const k = keep(cv.Mat.zeros(h, w, cv.CV_8U));
+  const up = deg > 0;
+  cv.line(k, new cv.Point(0, up ? h - 1 : 0), new cv.Point(w - 1, up ? 0 : h - 1), new cv.Scalar(1), 1);
+  return k;
+}
+
+/**
+ * Un-mark "lines" whose top edge keeps flipping between rising and falling:
+ * those are zigzags (spikes), not ground. Hills and ramps flip a few times.
+ */
+function rejectJagged(cv: CV, labels: Int32Array, stats: CVTypes.Mat, n: number, isLongLine: Uint8Array): void {
+  const STEP = 12;
+  for (let l = 1; l < n; l++) {
+    if (!isLongLine[l]) continue;
+    const x0 = stats.intAt(l, cv.CC_STAT_LEFT);
+    const y0 = stats.intAt(l, cv.CC_STAT_TOP);
+    const w = stats.intAt(l, cv.CC_STAT_WIDTH);
+    const h = stats.intAt(l, cv.CC_STAT_HEIGHT);
+    const tops: number[] = [];
+    for (let x = x0; x < x0 + w; x += STEP) {
+      for (let y = y0; y < y0 + h; y++) {
+        if (labels[y * OUT_W + x] === l) {
+          tops.push(y);
+          break;
+        }
+      }
+    }
+    let flips = 0;
+    let dir = 0;
+    for (let i = 1; i < tops.length; i++) {
+      const d = tops[i] - tops[i - 1];
+      if (Math.abs(d) < 4) continue;
+      const s = Math.sign(d);
+      if (dir !== 0 && s !== dir) flips++;
+      dir = s;
+    }
+    if (flips > Math.max(3, w / 160)) isLongLine[l] = 0;
+  }
 }
 
 /** Line labels whose horizontal span is ≥75% covered by doodles touching them. */
