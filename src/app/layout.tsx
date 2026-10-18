@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, JetBrains_Mono, Kalam } from 'next/font/google';
+import { InkCursor } from '@/components/ink-cursor';
 import { SiteNav } from '@/components/site-nav';
 import './globals.css';
 
@@ -16,8 +17,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#F3EEE3' },
-    { media: '(prefers-color-scheme: dark)', color: '#0E0F12' },
+    { media: '(prefers-color-scheme: light)', color: '#FFF7E6' },
+    { media: '(prefers-color-scheme: dark)', color: '#120A2A' },
   ],
 };
 
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       <body className="flex min-h-full flex-col">
         <SiteNav />
         <main className="flex flex-1 flex-col">{children}</main>
+        <InkCursor />
       </body>
     </html>
   );

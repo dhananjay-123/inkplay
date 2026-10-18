@@ -5,40 +5,45 @@
    Every colour in the UI comes from these variables.
 ------------------------------------------------------------------- */
 :root {
-  --paper: #f3eee3;
-  --paper-deep: #e9e2d2;
-  --ink: #141414;
-  --graphite: #6b6760;
-  --rule: rgba(20, 20, 20, 0.06);
-  --accent: #c6ff3d;
-  --accent-ink: #141414; /* text on accent */
-  --hazard: #ff4a1c;
-  --card: #fbf8f1;
-  --shadow: 0 1px 0 rgba(20, 20, 20, 0.08), 0 12px 32px -12px rgba(20, 20, 20, 0.25);
+  --paper: #fff7e6;
+  --paper-deep: #ffe9c2;
+  --ink: #1a1033; /* deep violet ink */
+  --graphite: #6b5e8c;
+  --rule: rgba(26, 16, 51, 0.07);
+  --accent: #b6ff2e; /* highlighter lime */
+  --accent-ink: #1a1033; /* text on bright fills, both themes */
+  --hazard: #ff3b5c;
+  --pop: #7b5cff; /* arcade violet */
+  --sun: #ffc93c;
+  --sky: #2ec5ff;
+  --card: #ffffff;
+  --shadow: 0 1px 0 rgba(26, 16, 51, 0.08), 0 14px 34px -14px rgba(60, 30, 140, 0.35);
   color-scheme: light;
 }
 
-/* Dark = "blueprint at night" */
+/* Dark = "arcade at midnight" */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #0e0f12;
-    --paper-deep: #15171c;
-    --ink: #ece8de;
-    --graphite: #9a968d;
-    --rule: rgba(160, 190, 255, 0.07);
-    --card: #14161b;
-    --shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 32px -12px rgba(0, 0, 0, 0.7);
+    --paper: #120a2a;
+    --paper-deep: #1c1240;
+    --ink: #fff7e6;
+    --graphite: #a497d0;
+    --rule: rgba(150, 120, 255, 0.1);
+    --pop: #9b82ff;
+    --card: #1f1547;
+    --shadow: 0 1px 0 rgba(255, 255, 255, 0.05), 0 14px 34px -14px rgba(0, 0, 0, 0.8);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --paper: #0e0f12;
-  --paper-deep: #15171c;
-  --ink: #ece8de;
-  --graphite: #9a968d;
-  --rule: rgba(160, 190, 255, 0.07);
-  --card: #14161b;
-  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 32px -12px rgba(0, 0, 0, 0.7);
+  --paper: #120a2a;
+  --paper-deep: #1c1240;
+  --ink: #fff7e6;
+  --graphite: #a497d0;
+  --rule: rgba(150, 120, 255, 0.1);
+  --pop: #9b82ff;
+  --card: #1f1547;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.05), 0 14px 34px -14px rgba(0, 0, 0, 0.8);
   color-scheme: dark;
 }
 
@@ -50,6 +55,9 @@
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-hazard: var(--hazard);
+  --color-pop: var(--pop);
+  --color-sun: var(--sun);
+  --color-sky: var(--sky);
   --color-card: var(--card);
   --font-display: var(--font-bricolage);
   --font-hand: var(--font-kalam);
@@ -87,8 +95,33 @@ body {
 }
 
 .highlight {
-  background: linear-gradient(transparent 55%, var(--accent) 55%, var(--accent) 92%, transparent 92%);
-  color: inherit;
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 0 0.15em;
+  box-shadow: 3px 3px 0 var(--pop);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Chunky arcade button: lime, dark outline, violet drop, sinks when pressed */
+.btn-game {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 2px solid var(--accent-ink);
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 4px 4px 0 var(--pop);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.btn-game:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--pop);
+}
+.btn-game:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--pop);
 }
 
 :focus-visible {
@@ -193,4 +226,41 @@ body {
   .scribble path, .hd-draw { stroke-dashoffset: 0; animation: none; transition: none; }
   .hd-note, .hd-arc { opacity: 1; animation: none; }
   .hd-hero { animation: none; }
+}
+
+/* ------------------------------------------------------------------
+   Pen-nib cursor (components/ink-cursor.tsx). Only on fine pointers,
+   only once the component has mounted.
+------------------------------------------------------------------- */
+@media (pointer: fine) {
+  .ink-cursor-on,
+  .ink-cursor-on * {
+    cursor: none !important;
+  }
+  .ink-cursor-on input:not([type="file"]):not([type="button"]):not([type="submit"]),
+  .ink-cursor-on textarea,
+  .ink-cursor-on [contenteditable="true"] {
+    cursor: text !important;
+  }
+}
+.ink-cursor {
+  --cursor-fill: var(--paper);
+  transition: opacity 0.2s;
+}
+.ink-cursor-nib {
+  transform-origin: 1.5px 1.5px;
+  transition: transform 0.18s cubic-bezier(0.2, 1.4, 0.4, 1), filter 0.18s;
+  filter: drop-shadow(2px 2px 0 var(--pop));
+}
+.ink-cursor[data-state="cta"] {
+  --cursor-fill: var(--accent);
+}
+.ink-cursor[data-state="cta"] .ink-cursor-nib {
+  transform: scale(1.45) rotate(-8deg);
+}
+.ink-cursor[data-state="hidden"] {
+  opacity: 0 !important;
+}
+.ink-cursor-down .ink-cursor-nib {
+  transform: scale(0.85);
 }

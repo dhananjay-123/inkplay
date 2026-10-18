@@ -133,7 +133,7 @@ export function CreateFlow() {
             <div>
               <p className="font-hand text-2xl text-graphite sm:text-3xl">Drop a photo of your drawing here</p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
-                <button type="button" onClick={() => fileInput.current?.click()} className="label rounded-full bg-ink px-5 py-3 text-paper">
+                <button type="button" onClick={() => fileInput.current?.click()} className="label btn-game px-5 py-3">
                   Upload
                 </button>
                 <button type="button" onClick={() => cameraInput.current?.click()} className="label rounded-full border border-current px-5 py-3 sm:hidden">
@@ -171,7 +171,7 @@ export function CreateFlow() {
                 <p className="font-hand text-2xl leading-snug text-hazard">{phase.message}</p>
                 <div className="mt-4 flex gap-3">
                   {phase.retryable && phase.vision && (
-                    <button type="button" onClick={() => parse(phase.vision!)} className="label rounded-full bg-ink px-5 py-3 text-paper">
+                    <button type="button" onClick={() => parse(phase.vision!)} className="label btn-game px-5 py-3">
                       Try again
                     </button>
                   )}
@@ -246,7 +246,7 @@ function ReadyPanel({ result, onPlay, onReset }: { result: ParseResponse; onPlay
           </ul>
           <ul className="mt-3 flex flex-wrap gap-2">
             {level.rules.map((r, i) => (
-              <li key={i} className="label bg-accent px-2 py-1 text-accent-ink shadow-[2px_2px_0_var(--ink)]">
+              <li key={i} className="label bg-accent px-2 py-1 text-accent-ink shadow-[2px_2px_0_var(--pop)]">
                 {ruleChip(r)} ✓
               </li>
             ))}
@@ -255,7 +255,7 @@ function ReadyPanel({ result, onPlay, onReset }: { result: ParseResponse; onPlay
       )}
       <p className="font-hand text-lg text-graphite">✎ {level.designerNote}</p>
       <div className="flex flex-wrap gap-3">
-        <button type="button" onClick={onPlay} className="label rounded-full bg-accent px-6 py-4 text-accent-ink shadow-[3px_3px_0_var(--ink)]">
+        <button type="button" onClick={onPlay} className="label btn-game px-6 py-4">
           Play it →
         </button>
         <button type="button" onClick={onReset} className="label rounded-full border border-current px-5 py-4">

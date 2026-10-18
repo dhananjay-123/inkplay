@@ -46,7 +46,7 @@ export function WebcamCapture({ onCapture, onClose }: Props) {
             <button
               type="button"
               onClick={() => video.current && video.current.readyState >= 2 && onCapture(video.current)}
-              className="label rounded-full bg-accent px-6 py-3 text-accent-ink"
+              className="label btn-game px-6 py-3"
             >
               Snap it
             </button>

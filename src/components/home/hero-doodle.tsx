@@ -20,11 +20,11 @@ export function HeroDoodle() {
         <g className="hd-hero">
           <path className="hd-draw hd-5" pathLength={1} strokeWidth="4.5" d="M70 228 L70 176 C 98 170, 106 196, 72 202" />
         </g>
-        {/* margin rule */}
-        <text x="300" y="58" className="hd-note font-hand" fill="var(--graphite)" stroke="none" fontSize="30" transform="rotate(-4 300 58)">
+        {/* margin rule, highlighter underneath */}
+        <path className="hd-draw hd-6" pathLength={1} strokeWidth="14" stroke="var(--accent)" strokeOpacity="0.9" d="M296 50 L462 38" />
+        <text x="300" y="58" className="hd-note font-hand" fill="var(--ink)" stroke="none" fontSize="30" transform="rotate(-4 300 58)">
           low gravity
         </text>
-        <path className="hd-draw hd-6" pathLength={1} strokeWidth="9" stroke="var(--accent)" strokeOpacity="0.85" d="M296 66 L462 54" style={{ mixBlendMode: 'multiply' }} />
         {/* dotted jump arc */}
         <path className="hd-arc" strokeWidth="2.5" strokeDasharray="2 9" stroke="var(--graphite)" d="M84 170 C 180 40, 300 40, 396 150" />
       </svg>

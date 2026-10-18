@@ -7,7 +7,7 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 | # | Phase | Status | Notes |
 |---|---|---|---|
 | 0 | Repo + docs (`CLAUDE.md`, `docs/*`) | ✅ | |
-| 1 | Model smoke test (`scripts/test-model.ts`) | 🟡 | Gemini done (5/5 samples, see numbers below); Ollama not installed on this laptop yet |
+| 1 | Model smoke test (`scripts/test-model.ts`) | ✅ | Gemini + Ollama both 5/5 on player/goal (numbers below) |
 | 2 | Skeleton + deploy | 🟡 | Skeleton done; deploy waits on GitHub repo + Vercel project |
 | 3 | Core loop | 🟡 | Verified end to end with real Gemma 4 (cloud); Ollama run pending |
 | 4 | Supabase gallery | 🟡 | Code done (schema.sql, `/gallery`, home peek); verify against a real Supabase project |
@@ -21,7 +21,7 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 - [x] `scripts/test-model.ts` loads a sample, calls `generateJSON`, prints JSON + latency
 - [x] `pnpm test:vision` — headless OpenCV run on all 5 samples, writes `.out/*.som.jpg`
 - [x] Run against `gemini` (`gemma-4-26b-a4b-it`)
-- [ ] Run against `ollama`
+- [x] Run against `ollama` (`gemma4:e4b`, RTX 4060 laptop)
 - [x] Record: accuracy, seconds/call, system-instruction + JSON-mode support → `docs/DECISIONS.md` (D2, D10, D11)
 
 ### Phase 2 — Skeleton + deploy
@@ -63,4 +63,4 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 | Provider | Model | Parse latency | Review latency | Notes |
 |---|---|---|---|---|
 | gemini | gemma-4-26b-a4b-it | 10–31 s (median ≈ 13 s, script); 24 s in-browser for 14 marks | — | thinking MINIMAL, native system, 2 images. Accuracy: every player/goal/hazard/enemy/rule correct on 5 samples; the hatched trampoline reads as spikes |
-| ollama | gemma4:e4b | — | — | |
+| ollama | gemma4:e4b | 15–16 s clean; 32–44 s when the first reply is malformed JSON and retried (2/5 samples) | — | RTX 4060 8 GB laptop. Player, goal and rules right on 5/5; enemies on 03/04 found |

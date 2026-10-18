@@ -61,7 +61,7 @@ export default function AboutPage() {
         Mono. Built for Hacktoberfest Hack Day Gwalior × ABV-IIITM IEEE.
       </p>
 
-      <Link href="/create" className="label mt-12 inline-block rounded-full bg-ink px-6 py-4 text-paper">
+      <Link href="/create" className="label mt-12 btn-game px-6 py-4">
         Start drawing →
       </Link>
     </section>

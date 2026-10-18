@@ -65,7 +65,7 @@ function Empty({ title }: { title: string }) {
     <div className="mt-12 rounded-sm border-2 border-dashed border-graphite/40 px-6 py-16 text-center">
       <p className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{title}</p>
       <p className="font-hand mt-3 text-xl text-graphite">Draw a level and play it right now. No account, no database.</p>
-      <Link href="/create" className="label mt-8 inline-block rounded-full bg-ink px-6 py-4 text-paper">
+      <Link href="/create" className="label mt-8 btn-game px-6 py-4">
         Start drawing →
       </Link>
     </div>

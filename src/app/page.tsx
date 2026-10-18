@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { DoodleCard } from '@/components/gallery/doodle-card';
-import { HealthPill } from '@/components/home/health-pill';
 import { HeroDoodle } from '@/components/home/hero-doodle';
 import { Reveal, Scribble } from '@/components/home/reveal';
 import { hasSupabase } from '@/lib/env';
@@ -15,6 +14,14 @@ const MEANING = [
   { drawn: 'dog', role: 'enemy', note: 'chases you' },
   { drawn: 'chai cup', role: 'power-up', note: 'obviously' },
 ] as const;
+
+const ROLE_CHIP: Record<(typeof MEANING)[number]['role'], string> = {
+  hazard: 'bg-hazard text-white',
+  enemy: 'bg-hazard text-white',
+  bouncy: 'bg-sun text-accent-ink',
+  platform: 'bg-sky text-accent-ink',
+  'power-up': 'bg-pop text-white',
+};
 
 const RULES = [
   { written: 'low gravity', becomes: 'gravity × 0.55' },
@@ -36,8 +43,7 @@ export default function Home() {
       {/* ---------------------------------------------------------- hero */}
       <section className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-4 pt-10 pb-20 sm:px-8 lg:grid-cols-[1.1fr_1fr]">
         <div>
-          <HealthPill />
-          <h1 className="font-display mt-6 text-[clamp(4rem,14vw,10.5rem)] leading-[0.85] font-extrabold tracking-[-0.04em]">INKPLAY</h1>
+          <h1 className="font-display text-[clamp(4rem,14vw,10.5rem)] leading-[0.85] font-extrabold tracking-[-0.04em]">INKPLAY</h1>
           <p className="font-display mt-6 max-w-xl text-2xl sm:text-3xl">
             Draw it. <span className="highlight">Write the rules.</span> Play it.
           </p>
@@ -45,7 +51,7 @@ export default function Home() {
             A pen, a page, and Gemma 4 reading what you <em>meant</em>. In the cloud, or fully offline on a laptop.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Link href="/create" className="label inline-flex items-center gap-2 rounded-full bg-ink px-6 py-4 text-paper transition-transform hover:-translate-y-0.5">
+            <Link href="/create" className="label inline-flex items-center gap-2 btn-game px-6 py-4">
               Start drawing →
             </Link>
             <Link href="/guide" className="label px-2 py-4 text-graphite hover:text-ink">
@@ -82,7 +88,7 @@ export default function Home() {
                   <li key={m.drawn} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3">
                     <span className="font-hand w-32 text-2xl">{m.drawn}</span>
                     <span className="label text-graphite">→</span>
-                    <span className={`label rounded-full px-2.5 py-1 ${m.role === 'hazard' || m.role === 'enemy' ? 'bg-hazard text-paper' : 'bg-ink text-paper'}`}>{m.role}</span>
+                    <span className={`label rounded-full px-2.5 py-1 ${ROLE_CHIP[m.role]}`}>{m.role}</span>
                     <span className="font-hand ml-auto text-lg text-graphite">{m.note}</span>
                   </li>
                 ))}

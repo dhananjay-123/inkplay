@@ -105,7 +105,7 @@ export default function GuidePage() {
       <p className="mt-3 max-w-2xl text-lg text-graphite">Arrows or WASD to move, Space or ↑ to jump. On a phone, use the on-screen buttons.</p>
 
       <div className="mt-12 flex flex-wrap gap-4">
-        <Link href="/create" className="label rounded-full bg-ink px-6 py-4 text-paper">
+        <Link href="/create" className="label btn-game px-6 py-4">
           Start drawing →
         </Link>
         <Link href="/create#samples" className="label px-2 py-4 text-graphite hover:text-ink">

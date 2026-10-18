@@ -93,7 +93,7 @@ best-effort with a timeout.
 | Provider | Model | Parse | Notes |
 |---|---|---|---|
 | Gemini API | `gemma-4-26b-a4b-it` | 10–31 s, median ≈ 13 s | thinking `MINIMAL`, native system instruction, 2 images. Correct player/goal/hazard/enemy/rules on all 5 samples |
-| Ollama (laptop) | `gemma4:e4b` | *see `docs/PROGRESS.md`* | fully offline |
+| Ollama (laptop, RTX 4060) | `gemma4:e4b` | 15–16 s, up to ≈ 44 s when a malformed reply is retried | fully offline; player, goal and rules right on all 5 samples |
 
 Setting thinking to `MINIMAL` made calls 2–3× faster with no accuracy loss.
 Details are in [`docs/DECISIONS.md`](docs/DECISIONS.md).
@@ -128,7 +128,7 @@ pnpm demo       # = MODEL_PROVIDER=ollama next start
 
 - [ ] `ollama list` shows `gemma4:e4b`, and `ollama serve` is running
 - [ ] `pnpm build` was run **while online**
-- [ ] Wi-Fi off → `pnpm demo` → `/` shows the health pill as *offline · laptop · ready*
+- [ ] Wi-Fi off → `pnpm demo` → `/api/health` shows `"provider":"ollama"` and `"modelReachable":true`
 - [ ] Try a sample on `/create` → play → the end card shows a verdict
 - [ ] The gallery says "The gallery is offline. The game isn't." (expected)
 

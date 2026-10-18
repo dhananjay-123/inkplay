@@ -94,7 +94,7 @@ export function PlayScreen({ data }: Props) {
             Restart
           </button>
           {id && (
-            <button type="button" onClick={share} className="rounded-full bg-accent px-3 py-1.5 text-accent-ink">
+            <button type="button" onClick={share} className="btn-game px-3 py-1.5">
               {copied ? 'Link copied' : 'Share'}
             </button>
           )}
@@ -107,7 +107,7 @@ export function PlayScreen({ data }: Props) {
           {level.rules.map((r, i) => (
             <li
               key={i}
-              className="label rotate-[-1deg] bg-accent px-2.5 py-1 text-accent-ink shadow-[2px_2px_0_var(--ink)] odd:rotate-[1deg]"
+              className="label rotate-[-1deg] bg-accent px-2.5 py-1 text-accent-ink shadow-[2px_2px_0_var(--pop)] odd:rotate-[1deg]"
               title="Read from your paper"
             >
               {ruleChip(r)} ✓
@@ -188,7 +188,7 @@ function EndCard({ stats, totalCoins, review, onAgain, hasId }: { stats: RunStat
           )}
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <button type="button" onClick={onAgain} className="label rounded-full bg-ink px-5 py-3 text-paper">
+          <button type="button" onClick={onAgain} className="label btn-game px-5 py-3">
             Play again
           </button>
           <Link href="/create" className="label rounded-full border border-current px-5 py-3">
