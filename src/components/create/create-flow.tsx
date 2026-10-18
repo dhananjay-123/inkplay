@@ -1,9 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ApiErrorBody, ParseResponse } from '@/lib/api-types';
 import { ruleChip } from '@/lib/rules-display';
+import { SymbolLegend } from '@/components/guide/symbols';
 import { SAMPLES, sampleSrc, sampleThumb } from '@/lib/samples';
 import { useInkplay } from '@/lib/store';
 import { processImage, warmupVision, type Processed } from '@/lib/vision/client';
@@ -266,18 +268,14 @@ function ReadyPanel({ result, onPlay, onReset }: { result: ParseResponse; onPlay
 
 function CheatSheet() {
   return (
-    <details className="mt-14 max-w-2xl bg-card p-5 shadow-[var(--shadow)] ring-1 ring-ink/10">
-      <summary className="label cursor-pointer">Cheat sheet (optional — Gemma reads anything)</summary>
-      <ul className="font-hand mt-4 grid gap-1 text-xl sm:grid-cols-2">
-        <li>— straight line = ground / platform</li>
-        <li>/\/\/\ zigzag = spikes</li>
-        <li>P = you, the player</li>
-        <li>G or ★ = goal</li>
-        <li>$ = coin</li>
-        <li>E + arrow = enemy + direction</li>
-        <li>anything else = Gemma figures it out</li>
-        <li>words = rules (“low gravity”)</li>
-      </ul>
-    </details>
+    <div className="mt-14 bg-card p-5 shadow-[var(--shadow)] ring-1 ring-ink/10 sm:p-6">
+      <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="label">What to draw (optional, Gemma reads anything)</h2>
+        <Link href="/guide" className="label text-graphite underline-offset-4 hover:text-ink hover:underline">
+          Full guide + all rules →
+        </Link>
+      </div>
+      <SymbolLegend />
+    </div>
   );
 }

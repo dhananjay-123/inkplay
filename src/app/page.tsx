@@ -48,8 +48,8 @@ export default function Home() {
             <Link href="/create" className="label inline-flex items-center gap-2 rounded-full bg-ink px-6 py-4 text-paper transition-transform hover:-translate-y-0.5">
               Start drawing →
             </Link>
-            <Link href="/create#samples" className="label px-2 py-4 text-graphite hover:text-ink">
-              or try a sample
+            <Link href="/guide" className="label px-2 py-4 text-graphite hover:text-ink">
+              How to draw a level
             </Link>
           </div>
         </div>

@@ -2,8 +2,9 @@ import Link from 'next/link';
 
 const LINKS = [
   { href: '/create', label: 'Create' },
+  { href: '/guide', label: 'Guide' },
   { href: '/gallery', label: 'Gallery' },
-  { href: '/about', label: 'About' },
+  { href: '/about', label: 'About', wide: true },
 ] as const;
 
 export function SiteNav() {
@@ -12,9 +13,9 @@ export function SiteNav() {
       <Link href="/" className="font-display text-xl font-extrabold tracking-tight">
         INKPLAY<span className="text-hazard">.</span>
       </Link>
-      <nav className="flex items-center gap-4 sm:gap-6">
+      <nav className="flex items-center gap-3 sm:gap-6">
         {LINKS.map((l) => (
-          <Link key={l.href} href={l.href} className="label text-graphite transition-colors hover:text-ink">
+          <Link key={l.href} href={l.href} className={`label text-graphite transition-colors hover:text-ink ${'wide' in l ? 'hidden sm:inline' : ''}`}>
             {l.label}
           </Link>
         ))}
