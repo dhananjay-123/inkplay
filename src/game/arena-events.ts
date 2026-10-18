@@ -23,10 +23,16 @@ export type ArenaEvents = {
   npcdie: { killer: string | null };
   /** Someone in the room is on a newer map than mine: ask for it. */
   newerMap: void;
+  /** AI players for the scoreboard (a few times per second). */
+  botboard: { id: string; name: string; color: string; kills: number; deaths: number }[];
+  /** As host I saw an AI player die (others hear the `die` message). */
+  botdie: { victim: string; killer: string | null };
   // React → game
   peers: PlayerMeta[];
   touch: { left?: boolean; right?: boolean; jet?: boolean; grenade?: boolean };
   autofire: boolean;
+  /** Set the number of AI players. */
+  bots: number;
 };
 
 type Handler<T> = (payload: T) => void;

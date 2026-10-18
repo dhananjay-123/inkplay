@@ -235,3 +235,20 @@ decision, why.
 - **Minimap** (live dots for you, players, monsters) and a see-through map
   maker so the arena stays visible behind it.
 - Measured with 4 clients: 9.4 msgs/s per sender, max gap < 0.45 s.
+
+### D21 — AI bots, and maps without overlaps
+- **AI bots** (0-8, set in the map maker and live with `− bots N +` by any
+  player): host-simulated with real Arcade bodies; they walk, jetpack over
+  walls and away from lava/spikes, chase the nearest enemy (players, other
+  bots, monsters), strafe at range and shoot an SMG with a wobble so they
+  are beatable. Hits on bots are decided by the host; bot kills/deaths ride
+  in the host's state message and show on everyone's scoreboard and feed.
+  A room with one human and bots works offline too.
+- **No overlapping elements** (`finalizeArena`): a floor is added first,
+  then `separate()` keeps bigger platforms and moves a touching/overlapping
+  one just above or below with fly-through room (~60 px / ~80 px), or drops
+  it; cover standing on a platform snaps onto its top. Hazards don't stack,
+  water stops at ledges and never swallows a platform, lava/spikes still
+  inside a platform are dropped, crates keep apart. Checked on 300
+  procedural maps: 0 overlapping pairs of any kind.
+- Map rounds are timestamps, so a map made after a page reload always wins.

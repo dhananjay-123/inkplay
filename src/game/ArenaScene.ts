@@ -1,9 +1,9 @@
 import * as Phaser from 'phaser';
-import type { NetMsg, NpcShot, NpcState, PlayerMeta, Shot, Transport } from '@/lib/arena/net';
-import { ARENA_WORLD, arenaTuning, type ArenaMap, type EnemyKind, type PickupKind } from '@/lib/arena/schema';
+import type { BotState, NetMsg, NpcShot, NpcState, PlayerMeta, Shot, Transport } from '@/lib/arena/net';
+import { ARENA_WORLD, MAX_BOTS, arenaTuning, type ArenaMap, type EnemyKind, type PickupKind } from '@/lib/arena/schema';
 import { BUFFS, BUFF_IDS, CHAINSAW_SECONDS, MAX_GRENADES, SHIELD_HP, START_GRENADES, WEAPONS, WEAPON_IDS, type BuffId, type WeaponId } from '@/lib/arena/weapons';
 import { sampleSrc } from '@/lib/samples';
-import { PALETTE, drawArena, drawCrumble, drawEnemy, drawPickup, drawPlayer, hex } from './art';
+import { ARENA_COLORS, PALETTE, drawArena, drawCrumble, drawEnemy, drawPickup, drawPlayer, hex } from './art';
 import type { ArenaBus } from './arena-events';
 import { play } from './sfx';
 
@@ -109,6 +109,35 @@ type Npc = Target & {
   buf: Snap[];
 };
 
+/** An AI player (host-simulated with a real physics body; others interpolate it). */
+type Bot = Target & {
+  idx: number;
+  id: string;
+  name: string;
+  color: string;
+  img: Phaser.Types.Physics.Arcade.ImageWithDynamicBody;
+  gfx: Phaser.GameObjects.Graphics;
+  label: Phaser.GameObjects.Text;
+  hp: number;
+  aim: number;
+  jet: boolean;
+  fuel: number;
+  ammo: number;
+  reloadUntil: number;
+  nextShot: number;
+  respawnAt: number;
+  protectedUntil: number;
+  spikeCd: number;
+  kills: number;
+  deaths: number;
+  wanderX: number;
+  wanderUntil: number;
+  lastHitBy: string | null;
+  buf: (Snap & { jet: boolean })[];
+};
+
+const BOT_NAMES = ['Chotu', 'Pappu', 'Golu', 'Bunty', 'Tinku', 'Monu', 'Sonu', 'Babloo'];
+
 type Proj = { x: number; y: number; vx: number; vy: number; age: number; owner: string; w: WeaponId; mul: number; color: number };
 
 type Pickup = { x: number; y: number; kind: PickupKind; img: Phaser.GameObjects.Image; readyAt: number };
@@ -152,6 +181,12 @@ export class ArenaScene extends Phaser.Scene {
   private remotes = new Map<string, Remote>();
   private metas = new Map<string, PlayerMeta>();
   private npcs: Npc[] = [];
+  private bots: Bot[] = [];
+  private botTarget = 0;
+  private pendingBotShots: NpcShot[] = [];
+  private nextBoard = 0;
+  private solidGroup!: Phaser.Physics.Arcade.StaticGroup;
+  private crumbleGroup!: Phaser.Physics.Arcade.StaticGroup;
   private projs: Proj[] = [];
   private pickups: Pickup[] = [];
   private pendingShots: Shot[] = [];
@@ -200,6 +235,9 @@ export class ArenaScene extends Phaser.Scene {
     this.autofire = cfg.autofire;
     this.remotes = new Map();
     this.npcs = [];
+    this.bots = [];
+    this.botTarget = cfg.map.bots ?? 0;
+    this.pendingBotShots = [];
     this.projs = [];
     this.pickups = [];
     this.crumbles = [];
@@ -238,9 +276,11 @@ export class ArenaScene extends Phaser.Scene {
     this.hazGfx = this.add.graphics().setDepth(4);
 
     const solids = this.physics.add.staticGroup();
+    this.solidGroup = solids;
     this.solid = solidPlatforms.map(px);
     for (const r of this.solid) solids.add(this.add.zone(r.centerX, r.centerY, r.width, r.height));
     const crumbleGroup = this.physics.add.staticGroup();
+    this.crumbleGroup = crumbleGroup;
     this.crumbles = map.platforms
       .filter((p) => p.crumble)
       .map((p, i) => {
@@ -348,6 +388,7 @@ export class ArenaScene extends Phaser.Scene {
       }),
       bus.on('touch', (t) => Object.assign(this.touch, t)),
       bus.on('autofire', (on) => (this.autofire = on)),
+      bus.on('bots', (n) => (this.botTarget = Phaser.Math.Clamp(Math.round(n), 0, MAX_BOTS))),
     );
     // Keepalive: a hidden tab stops Phaser's loop; keep telling the room we're here (marked away).
     const keepalive = window.setInterval(() => {
@@ -462,6 +503,7 @@ export class ArenaScene extends Phaser.Scene {
     this.player.body.enable = false;
     this.player.body.setVelocity(0, 0);
     play('death');
+    if (this.host) this.creditBot(killer);
     this.cfg.net.send({ t: 'die', victim: this.cfg.me.id, killer });
     this.cfg.bus.emit('died', { killer });
     this.sendState(true);
@@ -542,6 +584,12 @@ export class ArenaScene extends Phaser.Scene {
         if (n.alive && d < r) this.hurtNpc(n, falloff(d), p.owner);
       }
     }
+    if (this.host) {
+      for (const b of this.bots) {
+        const d = Math.hypot(b.x - x, b.y - y);
+        if (b.alive && d < r) this.hurtBot(b, falloff(d) * (p.owner === b.id ? 0.5 : 1), p.owner);
+      }
+    }
   }
 
   private hurtNpc(n: Npc, amount: number, by: string) {
@@ -563,13 +611,21 @@ export class ArenaScene extends Phaser.Scene {
     const b = this.player.body;
     const { me, round, mapFrom } = this.cfg;
     const hidden = typeof document !== 'undefined' && document.hidden;
-    const hostPart = this.host && !hidden && this.npcs.length
+    const hostPart = this.host && !hidden
       ? {
-          n: this.npcs.map((n): NpcState => [n.id, Math.round(n.x), Math.round(n.y), Math.round(n.hp), n.alive ? 1 : 0, +n.aim.toFixed(2)]),
-          ns: this.pendingNpcShots,
+          ...(this.npcs.length
+            ? {
+                n: this.npcs.map((n): NpcState => [n.id, Math.round(n.x), Math.round(n.y), Math.round(n.hp), n.alive ? 1 : 0, +n.aim.toFixed(2)]),
+                ns: this.pendingNpcShots,
+              }
+            : {}),
+          bn: this.bots.length,
+          b: this.bots.map((b): BotState => [b.idx, Math.round(b.x), Math.round(b.y), Math.round(b.hp), b.alive ? 1 : 0, +b.aim.toFixed(2), b.jet ? 1 : 0, b.kills, b.deaths]),
+          bs: this.pendingBotShots,
         }
       : {};
     this.pendingNpcShots = [];
+    this.pendingBotShots = [];
     this.cfg.net.send({
       t: 'st',
       id: me.id,
@@ -702,7 +758,30 @@ export class ArenaScene extends Phaser.Scene {
         }
         for (const [x, y, a, id] of (m.ns ?? []).slice(0, 24)) this.addProj(x, y, a, 'smg', 0.7, `npc:${id}`, 0x9b5cff);
       }
+      // AI players from the room host.
+      if (typeof m.bn === 'number' && !this.host) {
+        this.setBotCount(Phaser.Math.Clamp(m.bn, 0, MAX_BOTS));
+        for (const [idx, x, y, hp, alive, aim, jet, kills, deaths] of m.b ?? []) {
+          const b = this.bots[idx];
+          if (!b) continue;
+          if (!b.alive && alive) b.buf = [];
+          b.buf.push({ t, x, y, aim, jet: jet === 1 });
+          if (b.buf.length > 20) b.buf.splice(0, b.buf.length - 20);
+          b.hp = hp;
+          if (b.alive && !alive) this.splat(b.x, b.y, hex(b.color));
+          b.alive = alive === 1;
+          b.kills = kills;
+          b.deaths = deaths;
+        }
+        for (const [x, y, a, idx] of (m.bs ?? []).slice(0, 24)) {
+          const b = this.bots[idx];
+          if (b) this.addProj(x, y, a, 'smg', 0.8, b.id, hex(b.color));
+        }
+      }
+    } else if (m.t === 'bots') {
+      if (m.r === this.cfg.round) this.botTarget = Phaser.Math.Clamp(Math.round(m.n), 0, MAX_BOTS);
     } else if (m.t === 'die') {
+      if (this.host) this.creditBot(m.killer);
       const r = this.remotes.get(m.victim);
       if (r && r.alive) {
         r.alive = false;
@@ -723,7 +802,11 @@ export class ArenaScene extends Phaser.Scene {
   /* ---------------- enemies ---------------- */
 
   private simulateNpcs(dt: number, now: number, walls: Phaser.Geom.Rectangle[]) {
-    const players: Target[] = [...(this.alive ? [{ x: this.player.x, y: this.player.y, alive: true }] : []), ...[...this.remotes.values()].filter((r) => r.alive && !r.away)];
+    const players: Target[] = [
+      ...(this.alive ? [{ x: this.player.x, y: this.player.y, alive: true }] : []),
+      ...[...this.remotes.values()].filter((r) => r.alive && !r.away),
+      ...this.bots.filter((b) => b.alive),
+    ];
     for (const n of this.npcs) {
       const spec = ENEMY[n.kind];
       if (!n.alive) {
@@ -833,6 +916,199 @@ export class ArenaScene extends Phaser.Scene {
     this.tweens.add({ targets: ring, scale: 4, alpha: 0, duration: 500, ease: 'Cubic.out', onComplete: () => ring.destroy() });
   }
 
+  /* ---------------- AI players ---------------- */
+
+  private setBotCount(n: number) {
+    while (this.bots.length > n) {
+      const b = this.bots.pop()!;
+      if (this.lockTarget === b) this.lockTarget = null;
+      b.img.destroy();
+      b.gfx.destroy();
+      b.label.destroy();
+    }
+    while (this.bots.length < n) {
+      const idx = this.bots.length;
+      const color = ARENA_COLORS[(idx + 3) % ARENA_COLORS.length];
+      const img = this.physics.add.image(-200, -200, this.heroTexture(color)).setScale(SCALE).setDepth(18).setVisible(false);
+      img.body.setSize(BODY.w / SCALE, BODY.h / SCALE).setOffset((56 - BODY.w / SCALE) / 2, 64 - BODY.h / SCALE);
+      img.setCollideWorldBounds(true);
+      img.body.setMaxVelocity(900, 1100);
+      img.body.enable = false;
+      this.physics.add.collider(img, this.solidGroup);
+      this.physics.add.collider(img, this.crumbleGroup);
+      const name = `${BOT_NAMES[idx % BOT_NAMES.length]} (bot)`;
+      this.bots.push({
+        idx,
+        id: `bot:${idx}`,
+        name,
+        color,
+        img,
+        gfx: this.add.graphics().setDepth(19),
+        label: this.nameTag(name).setDepth(22).setVisible(false),
+        x: -200,
+        y: -200,
+        alive: false,
+        hp: BASE.hp,
+        aim: 0,
+        jet: false,
+        fuel: 1,
+        ammo: WEAPONS.smg.ammo,
+        reloadUntil: 0,
+        nextShot: 0,
+        respawnAt: performance.now() + 1500 + idx * 700,
+        protectedUntil: 0,
+        spikeCd: 0,
+        kills: 0,
+        deaths: 0,
+        wanderX: W / 2,
+        wanderUntil: 0,
+        lastHitBy: null,
+        buf: [],
+      });
+    }
+  }
+
+  /** Host: a player or bot died to `killer`; if that was a bot, it scores. */
+  private creditBot(killer: string | null) {
+    if (!killer?.startsWith('bot:')) return;
+    const b = this.bots[Number(killer.slice(4))];
+    if (b) b.kills += 1;
+  }
+
+  private hurtBot(b: Bot, amount: number, by: string | null) {
+    const now = performance.now();
+    if (!b.alive || now < b.protectedUntil || amount <= 0) return;
+    if (by && by !== b.id) b.lastHitBy = by;
+    b.hp -= amount;
+    if (b.hp > 0) return;
+    b.alive = false;
+    b.deaths += 1;
+    b.respawnAt = now + BASE.respawnMs;
+    b.img.body.enable = false;
+    this.splat(b.x, b.y, hex(b.color));
+    const killer = by && by !== b.id ? by : b.lastHitBy;
+    this.creditBot(killer);
+    this.cfg.net.send({ t: 'die', victim: b.id, killer });
+    this.cfg.bus.emit('botdie', { victim: b.id, killer });
+  }
+
+  /** Host: move, fly, aim and shoot like a (slightly worse) player. */
+  private simulateBots(dt: number, now: number, walls: Phaser.Geom.Rectangle[]) {
+    const humans: (Target & { id: string })[] = [
+      ...(this.alive ? [{ id: this.cfg.me.id, x: this.player.x, y: this.player.y, alive: true }] : []),
+      ...[...this.remotes.values()].filter((r) => r.alive && !r.away),
+    ];
+    for (const b of this.bots) {
+      const body = b.img.body;
+      if (!b.alive) {
+        if (now < b.respawnAt) continue;
+        const others: Target[] = [...humans, ...this.bots.filter((o) => o.alive)];
+        const pts = this.cfg.map.spawns.map((sp) => ({ x: sp.x * W, y: sp.y * H }));
+        const best = pts
+          .map((p) => ({ p, d: others.length ? Math.min(...others.map((o) => Math.hypot(o.x - p.x, o.y - p.y))) : Math.random() }))
+          .sort((a, c) => c.d - a.d)[0].p;
+        body.enable = true;
+        body.reset(best.x, best.y - (64 * SCALE) / 2 - 2);
+        b.alive = true;
+        b.hp = BASE.hp;
+        b.fuel = 1;
+        b.ammo = WEAPONS.smg.ammo;
+        b.reloadUntil = 0;
+        b.lastHitBy = null;
+        b.protectedUntil = now + BASE.protectMs;
+        b.x = b.img.x;
+        b.y = b.img.y;
+        continue;
+      }
+      b.x = b.img.x;
+      b.y = b.img.y;
+      // pick a target: nearest visible enemy, else the nearest one to chase
+      const foes: Target[] = [...humans, ...this.bots.filter((o) => o !== b && o.alive), ...this.npcs.filter((n) => n.alive)];
+      const ranked = foes.map((f) => ({ f, d: Math.hypot(f.x - b.x, f.y - b.y) })).sort((a, c) => a.d - c.d);
+      const seen = ranked.find((o) => o.d < 1000 && !this.blocked(b.x, b.y, o.f.x, o.f.y, walls));
+      const chase = seen ?? ranked.find((o) => o.d < 1500);
+      let dir = 0;
+      if (chase) {
+        const dx = chase.f.x - b.x;
+        if (seen && chase.d < 200) dir = -Math.sign(dx);
+        else if (!seen || chase.d > 380) dir = Math.sign(dx);
+        else dir = Math.sin(now / 650 + b.idx * 2) > 0 ? 1 : -1; // strafe
+      } else {
+        if (now > b.wanderUntil || Math.abs(b.wanderX - b.x) < 30) {
+          b.wanderX = W * (0.05 + Math.random() * 0.9);
+          b.wanderUntil = now + 4000;
+        }
+        dir = Math.sign(b.wanderX - b.x);
+      }
+      const grounded = body.blocked.down;
+      const target = dir * BASE.run * 0.85;
+      body.setVelocityX(grounded ? target : Phaser.Math.Linear(body.velocity.x, target, Math.min(1, dt * 8)));
+      // fly: to reach a higher target, over walls, and away from lava/spikes ahead
+      const ahead = { x: b.x + dir * 50, y: b.y + 50 };
+      const danger = this.zones.some((z) => z.kind !== 'water' && Phaser.Geom.Rectangle.Contains(z.rect, ahead.x, ahead.y));
+      const blockedSide = (dir > 0 && body.blocked.right) || (dir < 0 && body.blocked.left);
+      const want = danger || blockedSide || (!!chase && chase.f.y < b.y - 70) || (!grounded && body.velocity.y > 300 && danger);
+      b.jet = want && b.fuel > 0.05;
+      if (b.jet) {
+        body.setVelocityY(Math.max(-BASE.maxRise * this.t.jetpack, body.velocity.y - BASE.jetThrust * this.t.jetpack * dt));
+        b.fuel = Math.max(0, b.fuel - BASE.fuelDrain * dt);
+      } else {
+        b.fuel = Math.min(1, b.fuel + (grounded ? BASE.fuelRegenGround : BASE.fuelRegenAir) * dt);
+      }
+      // hazards hurt bots too
+      const rect = new Phaser.Geom.Rectangle(body.x, body.y, body.width, body.height);
+      for (const z of this.zones) {
+        if (!Phaser.Geom.Intersects.RectangleToRectangle(z.rect, rect)) continue;
+        if (z.kind === 'lava') this.hurtBot(b, BASE.lavaDps * dt, null);
+        else if (z.kind === 'spikes' && now >= b.spikeCd) {
+          b.spikeCd = now + 500;
+          body.setVelocityY(-480);
+          this.hurtBot(b, BASE.spikeHit, null);
+        } else if (z.kind === 'water') body.setVelocityX(body.velocity.x + z.flow * 190);
+      }
+      if (!b.alive) continue;
+      // aim + shoot (a little wobbly so bots are beatable)
+      b.aim = seen ? Math.atan2(seen.f.y - b.y, seen.f.x - b.x) : dir < 0 ? Math.PI : dir > 0 ? 0 : b.aim;
+      if (b.reloadUntil && now >= b.reloadUntil) {
+        b.reloadUntil = 0;
+        b.ammo = WEAPONS.smg.ammo;
+      }
+      if (seen && seen.d < 720 && !b.reloadUntil && now >= b.nextShot) {
+        const a = b.aim + (Math.random() - 0.5) * 0.22;
+        const x = b.x + Math.cos(a) * 26;
+        const y = b.y + Math.sin(a) * 26;
+        this.addProj(x, y, a, 'smg', 0.8, b.id, hex(b.color));
+        this.pendingBotShots.push([Math.round(x), Math.round(y), +a.toFixed(3), b.idx]);
+        b.nextShot = now + 150 + Math.random() * 110;
+        b.ammo -= 1;
+        if (b.ammo <= 0) b.reloadUntil = now + 1700;
+      }
+    }
+  }
+
+  /** Every frame, on every client: place + draw the AI players. */
+  private renderBots(now: number, renderAt: number) {
+    for (const b of this.bots) {
+      if (!this.host && b.buf.length) {
+        const { x, y, s } = sample(b.buf, renderAt);
+        b.x = x;
+        b.y = y;
+        b.aim = s.aim;
+        b.jet = s.jet;
+        b.img.setPosition(x, y);
+      }
+      const prot = this.host && now < b.protectedUntil;
+      b.img.setVisible(b.alive).setAlpha(prot ? 0.5 : 1);
+      b.label.setPosition(b.x, b.y - 36).setVisible(b.alive);
+      b.gfx.clear();
+      if (b.alive) this.drawKit(b.gfx, b.x, b.y, b.aim, b.hp, b.jet, hex(b.color), 0, false);
+    }
+    if (now >= this.nextBoard) {
+      this.nextBoard = now + 400;
+      this.cfg.bus.emit('botboard', this.bots.map((b) => ({ id: b.id, name: b.name, color: b.color, kills: b.kills, deaths: b.deaths })));
+    }
+  }
+
   /* ---------------- minimap ---------------- */
 
   private static readonly MINI = { x: 12, y: 12, w: 224, h: 126 };
@@ -874,6 +1150,11 @@ export class ArenaScene extends Phaser.Scene {
     const cam = this.cameras.main;
     g.lineStyle(1.5, 0x2d5bff, 0.9).strokeRect(ox + cam.scrollX * sx, oy + cam.scrollY * sy, cam.width * sx, cam.height * sy);
     for (const n of this.npcs) if (n.alive) g.fillStyle(0x9b5cff, 1).fillRect(ox + n.x * sx - 2, oy + n.y * sy - 2, 4, 4);
+    for (const b of this.bots) {
+      if (!b.alive) continue;
+      g.fillStyle(hex(PALETTE.ink), 1).fillCircle(ox + b.x * sx, oy + b.y * sy, 3.5);
+      g.fillStyle(hex(b.color), 1).fillCircle(ox + b.x * sx, oy + b.y * sy, 2.5);
+    }
     for (const r of this.remotes.values()) {
       if (!r.alive) continue;
       g.fillStyle(hex(PALETTE.ink), 1).fillCircle(ox + r.x * sx, oy + r.y * sy, 4);
@@ -900,6 +1181,14 @@ export class ArenaScene extends Phaser.Scene {
     const renderAt = now - BASE.interpMs;
     const wasHost = this.host;
     this.host = this.electHost(now);
+    if (this.host !== wasHost) {
+      // Bot bodies only simulate on the host.
+      for (const b of this.bots) {
+        b.img.body.enable = this.host && b.alive;
+        if (this.host && b.alive) b.img.body.reset(b.x, b.y);
+        b.buf = [];
+      }
+    }
     if (this.host && !wasHost) {
       // Taking over the monsters: dead ones come back after a cooldown, live ones keep walking.
       for (const n of this.npcs) {
@@ -929,7 +1218,12 @@ export class ArenaScene extends Phaser.Scene {
     }
 
     // ---------- enemies
-    if (this.host) this.simulateNpcs(dt, now, walls);
+    if (this.host) {
+      if (this.bots.length !== this.botTarget) this.setBotCount(this.botTarget);
+      this.simulateBots(dt, now, walls);
+      this.simulateNpcs(dt, now, walls);
+    }
+    this.renderBots(now, renderAt);
     for (const n of this.npcs) {
       if (!this.host && n.buf.length) {
         const { x, y, s } = sample(n.buf, renderAt);
@@ -953,6 +1247,7 @@ export class ArenaScene extends Phaser.Scene {
       ...(this.alive ? [{ x: this.player.x, y: this.player.body.bottom }] : []),
       ...[...this.remotes.values()].filter((r) => r.alive).map((r) => ({ x: r.x, y: r.y + 22 })),
       ...this.npcs.filter((n) => n.alive && n.kind === 'walker').map((n) => ({ x: n.x, y: n.y + 22 })),
+      ...this.bots.filter((b) => b.alive).map((b) => ({ x: b.x, y: b.y + 22 })),
     ];
     for (const c of this.crumbles) {
       if (now < c.brokenUntil) continue;
@@ -1035,7 +1330,7 @@ export class ArenaScene extends Phaser.Scene {
     if (this.alive) {
       // Auto-aim (Mini Militia): with autofire on, lock onto the nearest
       // enemy (player or monster) in range with a clear line of sight.
-      const targets: Target[] = [...[...this.remotes.values()].filter((r) => r.alive && !r.away), ...this.npcs.filter((n) => n.alive)];
+      const targets: Target[] = [...[...this.remotes.values()].filter((r) => r.alive && !r.away), ...this.bots.filter((b) => b.alive), ...this.npcs.filter((n) => n.alive)];
       const near = targets
         .map((e) => ({ e, d: Math.hypot(e.x - this.player.x, e.y - this.player.y) }))
         .filter((o) => o.d < BASE.lockRange && !this.blocked(this.player.x, this.player.y, o.e.x, o.e.y, walls))
@@ -1229,6 +1524,16 @@ export class ArenaScene extends Phaser.Scene {
       }
       // other players stop it (they decide their own damage)
       if (!hit) hit = remoteRects.some((r) => r.id !== p.owner && Phaser.Geom.Intersects.LineToRectangle(seg, r.rect));
+      // AI players stop any shot but their own; the host applies the damage
+      if (!hit) {
+        for (const b of this.bots) {
+          if (!b.alive || b.id === p.owner) continue;
+          if (!Phaser.Geom.Intersects.LineToRectangle(seg, new Phaser.Geom.Rectangle(b.x - BODY.w / 2, b.y - BODY.h / 2, BODY.w, BODY.h))) continue;
+          hit = true;
+          if (this.host && w.kind !== 'rocket') this.hurtBot(b, w.damage * p.mul * this.t.damage, p.owner);
+          break;
+        }
+      }
       // enemies: players' shots only; the host applies the damage
       if (!hit && !p.owner.startsWith('npc:')) {
         for (const n of this.npcs) {

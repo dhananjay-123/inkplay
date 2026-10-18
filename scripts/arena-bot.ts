@@ -41,6 +41,7 @@ function bot(index: number): Promise<string> {
     let dir = 1;
     let npcMsgs = 0;
     let otherMap = 0;
+    let botCount = -1;
     const meta = () => ({ id, name, color: '#FF4A3D', kills, deaths, joinedAt });
 
     ch.on('broadcast', { event: 'm' }, ({ payload: m }) => {
@@ -67,6 +68,7 @@ function bot(index: number): Promise<string> {
         s.away = !!m.away;
         seen.set(m.id, s);
         if (m.n) npcMsgs++;
+        if (typeof m.bn === 'number') botCount = m.bn;
         for (const [sx, sy, a] of m.shots as [number, number, number][]) {
           if (!alive) continue;
           const dx = x - sx;
@@ -132,7 +134,7 @@ function bot(index: number): Promise<string> {
           clearInterval(tick);
           const end = Date.now();
           const rows = [...seen.entries()].map(([sid, v]) => `${sid}: ${v.n} msgs, ${(v.n / ((end - v.first) / 1000)).toFixed(1)}/s, max gap ${v.maxGap}ms, gap since last ${end - v.last}ms${v.away ? ' (away)' : ''}`);
-          const report = `[${name}] map "${map.title}" r${round}; monster updates ${npcMsgs}; msgs from other maps ${otherMap}; kills ${kills}, deaths ${deaths}\n  ${rows.join('\n  ')}\n  channel: ${events.join(' | ')}`;
+          const report = `[${name}] map "${map.title}" r${round}; monster updates ${npcMsgs}; msgs from other maps ${otherMap}; AI bots seen ${botCount}; kills ${kills}, deaths ${deaths}\n  ${rows.join('\n  ')}\n  channel: ${events.join(' | ')}`;
           ch.untrack().then(() => ch.unsubscribe()).then(() => done(report));
         }
       }, 100);

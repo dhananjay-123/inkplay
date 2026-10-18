@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArenaBus, type ArenaHud } from '@/game/arena-events';
+import { ArenaBus, type ArenaEvents, type ArenaHud } from '@/game/arena-events';
 import { ARENA_COLORS } from '@/game/art';
 import { play as sfx, setMuted } from '@/game/sfx';
 import { connectRoom, type NetMsg, type PlayerMeta, type Transport } from '@/lib/arena/net';
 import { proceduralArena } from '@/lib/arena/procedural';
-import { DEFAULT_OPTIONS, parseWireMap, type ArenaMap, type ArenaMapResponse, type MapOptions } from '@/lib/arena/schema';
+import { DEFAULT_OPTIONS, MAX_BOTS, parseWireMap, type ArenaMap, type ArenaMapResponse, type MapOptions } from '@/lib/arena/schema';
 import { SAMPLES, sampleSrc, sampleThumb } from '@/lib/samples';
 import { useInkplay } from '@/lib/store';
 import { anonymousUserId } from '@/lib/supabase/client';
@@ -234,9 +234,14 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
     net.track(me);
   }, [me, net]);
 
+  const [bots, setBots] = useState<ArenaEvents['botboard']>([]);
+  const botWant = useRef<number | null>(null);
+  const [botShown, setBotShown] = useState<number | null>(null);
+  const botsRef = useRef<ArenaEvents['botboard']>([]);
   const nameOf = useCallback((id: string | null) => {
     if (!id) return 'the map';
     if (id.startsWith('npc:')) return 'an ink monster';
+    if (id.startsWith('bot:')) return botsRef.current.find((b) => b.id === id)?.name ?? 'a bot';
     return peersRef.current.find((p) => p.id === id)?.name ?? 'someone';
   }, []);
   const creditKill = useCallback(() => {
@@ -321,6 +326,19 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
         pushFeed(`${nameOf(killer)} popped an ink monster`, mineKill);
         if (mineKill) creditKill();
       }),
+      bus.on('botdie', ({ victim, killer }) => {
+        const mineKill = killer === meRef.current.id;
+        pushFeed(`${nameOf(killer)} inked ${nameOf(victim)}`, mineKill);
+        if (mineKill) creditKill();
+      }),
+      bus.on('botboard', (list) => {
+        botsRef.current = list;
+        if (botWant.current === list.length) {
+          botWant.current = null;
+          setBotShown(null);
+        }
+        setBots((prev) => (JSON.stringify(prev) === JSON.stringify(list) ? prev : list));
+      }),
     ];
     return () => offs.forEach((o) => o());
   }, [bus, nameOf, pushFeed, setMe, creditKill]);
@@ -356,7 +374,8 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
   useEffect(() => bus.emit('autofire', autofire), [bus, autofire]);
 
   const publish = (map: ArenaMap, extra: Pick<Current, 'note' | 'source'> = {}) => {
-    const c: Current = { map, round: (currentRef.current?.round ?? 0) + 1, from: me.id, ...extra };
+    // The round is a timestamp, so a map made after a reload is still newer than the one before it.
+    const c: Current = { map, round: Math.max(Date.now(), (currentRef.current?.round ?? 0) + 1), from: me.id, ...extra };
     adopt(c);
     broadcastMap();
     sfx('win');
@@ -390,7 +409,20 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
     }
   };
 
-  const board = [...(peers.length ? peers : [me])].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
+  const humans = peers.length || 1;
+  const board = [...(peers.length ? peers : [me]), ...bots].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
+  // Anyone can add or remove AI players; the room host runs them. Quick
+  // clicks add up from the requested count, not the last reported one.
+  const changeBots = (delta: number) => {
+    if (!current) return;
+    const next = Math.max(0, Math.min(MAX_BOTS, (botWant.current ?? bots.length) + delta));
+    botWant.current = next;
+    setBotShown(next);
+    bus.emit('bots', next);
+    net.send({ t: 'bots', n: next, r: current.round });
+    sfx('click');
+  };
+  const botCount = botShown ?? bots.length;
   const showMaker = maker || (!current && waitedForMap);
 
   return (
@@ -408,7 +440,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
             {immersive ? room : `room ${room}`} · {copied ? 'copied' : 'invite'}
           </button>
           <span className={`label text-[0.62rem] text-graphite ${immersive ? SHORT_HIDE : ''}`} title={net.kind === 'online' ? 'Supabase Realtime' : 'BroadcastChannel: other tabs of this browser only'}>
-            {net.kind === 'online' ? `online · ${board.length} here` : `this browser only · ${board.length} here`}
+            {net.kind === 'online' ? `online · ${humans} here` : `this browser only · ${humans} here`}
           </span>
         </div>
         <div className={`label flex items-center gap-2 tabular-nums sm:gap-3 [&_button]:whitespace-nowrap ${immersive ? 'min-w-0 flex-nowrap overflow-x-auto' : 'flex-wrap'}`}>
@@ -438,6 +470,17 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
           <button type="button" onClick={toggleMuted} className={`btn-ghost btn-sm px-3 py-1 ${immersive ? SHORT_HIDE : ''}`} aria-pressed={!muted}>
             {muted ? 'Sound off' : 'Sound on'}
           </button>
+          {current && (
+            <span className="flex shrink-0 items-center gap-1" title="AI players">
+              <button type="button" aria-label="Remove a bot" onClick={() => changeBots(-1)} disabled={botCount === 0} className="btn-ghost btn-sm px-2 py-0.5 disabled:opacity-40">
+                −
+              </button>
+              <span className="tabular-nums">bots {botCount}</span>
+              <button type="button" aria-label="Add a bot" onClick={() => changeBots(1)} disabled={botCount >= MAX_BOTS} className="btn-ghost btn-sm px-2 py-0.5 disabled:opacity-40">
+                +
+              </button>
+            </span>
+          )}
           {current && host && (
             <button type="button" onClick={() => setMaker(true)} className="btn-ghost btn-sm px-3 py-1">
               New map
@@ -464,7 +507,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
           {/* scoreboard */}
           {current && (
             <ol className="pointer-events-none absolute right-2 top-2 z-10 min-w-40 rounded-[var(--wobble)] border-2 border-ink bg-card/90 px-3 py-2 text-sm">
-              {board.slice(0, 8).map((p) => (
+              {board.slice(0, 12).map((p) => (
                 <li key={p.id} className={`label flex items-center gap-2 text-[0.68rem] ${p.id === me.id ? 'text-pop' : ''}`}>
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-ink" style={{ background: p.color }} />
                   <span className="min-w-0 flex-1 truncate normal-case">{p.name}</span>
@@ -709,6 +752,18 @@ function MapOptionsPanel({ opts, setOpts }: { opts: MapOptions; setOpts: (o: Map
             className="w-28 accent-[var(--hazard)]"
           />
           <span className="label w-4 tabular-nums">{opts.enemies}</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="font-hand text-lg">Bots</span>
+          <input
+            type="range"
+            min={0}
+            max={MAX_BOTS}
+            value={opts.bots}
+            onChange={(e) => setOpts({ ...opts, bots: Number(e.target.value) })}
+            className="w-28 accent-[var(--pop)]"
+          />
+          <span className="label w-4 tabular-nums">{opts.bots}</span>
         </label>
         <div className="flex items-center gap-2" role="radiogroup" aria-label="Pickups">
           <span className="font-hand text-lg">Pickups</span>
