@@ -43,8 +43,6 @@ const BASE = {
   bulletLife: 0.55,
   damage: 10,
   range: 760,
-  /** Autofire triggers when an enemy is within this many radians of your aim. */
-  cone: 0.42,
   hp: 100,
   respawnMs: 3000,
   protectMs: 1500,
@@ -74,8 +72,6 @@ type Remote = {
 type Bullet = { x: number; y: number; vx: number; vy: number; life: number; owner: string; color: number };
 
 type Pickup = { x: number; y: number; kind: 'health' | 'ammo'; img: Phaser.GameObjects.Image; readyAt: number };
-
-const angleDiff = (a: number, b: number) => Math.abs(Phaser.Math.Angle.Wrap(a - b));
 
 export class ArenaScene extends Phaser.Scene {
   private cfg!: ArenaSceneConfig;
@@ -110,6 +106,7 @@ export class ArenaScene extends Phaser.Scene {
   private nextSend = 0;
   private nextHud = 0;
   private autofire = true;
+  private lockTarget: Remote | null = null;
   private unsub: (() => void)[] = [];
 
   constructor() {
@@ -124,6 +121,7 @@ export class ArenaScene extends Phaser.Scene {
     this.bullets = [];
     this.pickups = [];
     this.pendingShots = [];
+    this.lockTarget = null;
     this.unsub = [];
   }
 
@@ -359,6 +357,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private dropRemote(r: Remote) {
+    if (this.lockTarget === r) this.lockTarget = null;
     r.sprite.destroy();
     r.gfx.destroy();
     r.label.destroy();
@@ -446,17 +445,19 @@ export class ArenaScene extends Phaser.Scene {
         this.fuel = Math.min(1, this.fuel + (grounded ? BASE.fuelRegenGround : BASE.fuelRegenAir) * dt);
       }
 
-      // aim: the mouse, or (touch) the nearest enemy, else where you're facing
+      // Auto-aim (Mini Militia): with autofire on, lock onto the nearest enemy
+      // in range with a clear line of sight, on PC and touch alike.
       const enemies = [...this.remotes.values()].filter((r) => r.alive);
-      if (this.usingMouse) this.aim = Phaser.Math.Angle.Between(this.player.x, this.player.y, pointer.worldX, pointer.worldY);
-      else {
-        const near = enemies
-          .map((e) => ({ e, d: Math.hypot(e.x - this.player.x, e.y - this.player.y) }))
-          .filter((o) => o.d < BASE.range)
-          .sort((a, b) => a.d - b.d)[0];
-        if (near) this.aim = Phaser.Math.Angle.Between(this.player.x, this.player.y, near.e.x, near.e.y);
-        else if (dir !== 0) this.aim = dir > 0 ? 0 : Math.PI;
-      }
+      const lock = this.autofire
+        ? enemies
+            .map((e) => ({ e, d: Math.hypot(e.x - this.player.x, e.y - this.player.y) }))
+            .filter((o) => o.d < BASE.range && !this.blocked(this.player.x, this.player.y, o.e.x, o.e.y))
+            .sort((a, b) => a.d - b.d)[0]?.e ?? null
+        : null;
+      this.lockTarget = lock;
+      if (lock) this.aim = Phaser.Math.Angle.Between(this.player.x, this.player.y, lock.x, lock.y);
+      else if (this.usingMouse) this.aim = Phaser.Math.Angle.Between(this.player.x, this.player.y, pointer.worldX, pointer.worldY);
+      else if (dir !== 0) this.aim = dir > 0 ? 0 : Math.PI;
 
       // reload
       if (this.reloadUntil && now >= this.reloadUntil) {
@@ -465,16 +466,9 @@ export class ArenaScene extends Phaser.Scene {
       }
       if (held(this.keys.reload) && !this.reloadUntil && this.ammo < BASE.mag) this.reloadUntil = now + BASE.reloadMs;
 
-      // fire: manual (mouse down) or autofire (enemy in the aim cone with a clear line)
+      // fire: autofire at the locked enemy, or manual (mouse down) along your aim
       if (!this.reloadUntil && now >= this.nextShot && this.ammo > 0) {
-        if (this.usingMouse && pointer.isDown && pointer.leftButtonDown()) this.fire(this.aim);
-        else if (this.autofire) {
-          const lock = enemies
-            .map((e) => ({ e, d: Math.hypot(e.x - this.player.x, e.y - this.player.y), a: Phaser.Math.Angle.Between(this.player.x, this.player.y, e.x, e.y) }))
-            .filter((o) => o.d < BASE.range && angleDiff(o.a, this.aim) < BASE.cone && !this.blocked(this.player.x, this.player.y, o.e.x, o.e.y))
-            .sort((a, b) => a.d - b.d)[0];
-          if (lock) this.fire(lock.a);
-        }
+        if (lock || (this.usingMouse && pointer.isDown && pointer.leftButtonDown())) this.fire(this.aim);
       }
 
       // pickups
@@ -548,6 +542,12 @@ export class ArenaScene extends Phaser.Scene {
 
     // ---------- crosshair
     this.crosshair.clear();
+    const lt = this.alive ? this.lockTarget : null;
+    if (lt && lt.alive) {
+      const r = 26 + Math.sin(now / 90) * 3;
+      this.crosshair.lineStyle(3, hex(PALETTE.hazard), 1).strokeCircle(lt.x, lt.y, r);
+      this.crosshair.lineBetween(lt.x - r - 8, lt.y, lt.x - r + 4, lt.y).lineBetween(lt.x + r - 4, lt.y, lt.x + r + 8, lt.y);
+    }
     if (this.usingMouse && this.alive) {
       const cx = pointer.worldX;
       const cy = pointer.worldY;

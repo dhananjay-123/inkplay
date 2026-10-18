@@ -21,6 +21,29 @@ type Profile = { name: string; color: string };
 type Current = { map: ArenaMap; round: number; from: string; note?: string; source?: ArenaMapResponse['source'] };
 type Feed = { key: number; text: string; mine: boolean };
 
+/** Phones and tablets: play immersive + landscape by default. */
+const isTouch = () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+
+/** Real full screen where the browser allows it (must run inside a click), then try to lock landscape. */
+function enterFullscreen() {
+  const el = document.documentElement;
+  if (document.fullscreenElement || !el.requestFullscreen) return;
+  el.requestFullscreen({ navigationUI: 'hide' })
+    .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'))
+    .catch(() => {
+      /* iOS Safari and friends: the fixed overlay still covers the page */
+    });
+}
+
+function exitFullscreen() {
+  try {
+    screen.orientation?.unlock?.();
+  } catch {
+    /* not locked */
+  }
+  if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+}
+
 const randomRoom = () => Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
 
 function loadProfile(): Profile {
@@ -52,6 +75,7 @@ export function ArenaClient() {
   const [net, setNet] = useState<Transport | null>(null);
   const [me, setMe] = useState<PlayerMeta | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [immersive, setImmersive] = useState(false);
 
   useEffect(() => {
     // Client-only state (storage, URL) is read after hydration.
@@ -73,6 +97,11 @@ export function ArenaClient() {
     }
     setConnecting(true);
     sfx('click');
+    // Inside the click: browsers only allow full screen from a user gesture.
+    if (isTouch()) {
+      setImmersive(true);
+      enterFullscreen();
+    }
     const id = tabId();
     // Best effort: a real Supabase identity when anonymous sign-ins are on.
     void anonymousUserId();
@@ -89,10 +118,12 @@ export function ArenaClient() {
     net?.close();
     setNet(null);
     setMe(null);
+    setImmersive(false);
+    exitFullscreen();
     window.history.replaceState(null, '', '/arena');
   };
 
-  if (net && me) return <Room net={net} me={me} setMe={setMe} room={room} onLeave={leave} />;
+  if (net && me) return <Room net={net} me={me} setMe={setMe} room={room} onLeave={leave} immersive={immersive} setImmersive={setImmersive} />;
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-14">
@@ -101,7 +132,7 @@ export function ArenaClient() {
         Ink <span className="highlight">Arena</span>
       </h1>
       <p className="mt-4 max-w-xl text-lg text-graphite">
-        Jetpacks, autofire and a map Gemma designs for you, from a theme or from a drawing. Share the room code and everyone plays the same map live.
+        Jetpacks, auto-aim autofire and a map Gemma designs for you, from a theme or from a drawing. Share the room code and everyone plays the same map live.
       </p>
 
       <form
@@ -156,7 +187,7 @@ export function ArenaClient() {
         </div>
       </form>
       <p className="font-hand mt-6 text-lg text-graphite">
-        A/D to move, W or Space for the jetpack, mouse to aim. Autofire shoots when someone is in your sights. Click to fire yourself, R to reload.
+        A/D to move, W or Space for the jetpack. Autofire aims and shoots at the nearest enemy you can see; turn it off (F) to aim with the mouse and click to fire. R reloads.
       </p>
     </div>
   );
@@ -164,7 +195,21 @@ export function ArenaClient() {
 
 /* ---------------------------------------------------------------- room */
 
-function Room({ net, me, setMe, room, onLeave }: { net: Transport; me: PlayerMeta; setMe: (m: PlayerMeta) => void; room: string; onLeave: () => void }) {
+type RoomProps = {
+  net: Transport;
+  me: PlayerMeta;
+  setMe: (m: PlayerMeta) => void;
+  room: string;
+  onLeave: () => void;
+  immersive: boolean;
+  setImmersive: (on: boolean) => void;
+};
+
+/** Hidden on short (landscape phone) screens to leave room for the game. */
+// `!` because .btn-* set display outside the utilities layer.
+const SHORT_HIDE = '[@media(max-height:520px)]:hidden!';
+
+function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomProps) {
   const bus = useMemo(() => new ArenaBus(), []);
   const [current, setCurrent] = useState<Current | null>(null);
   const [peers, setPeers] = useState<PlayerMeta[]>([]);
@@ -174,6 +219,7 @@ function Room({ net, me, setMe, room, onLeave }: { net: Transport; me: PlayerMet
   const [feed, setFeed] = useState<Feed[]>([]);
   const [autofire, setAutofire] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [portraitOk, setPortraitOk] = useState(false);
   const muted = useInkplay((s) => s.muted);
   const toggleMuted = useInkplay((s) => s.toggleMuted);
   const currentRef = useRef<Current | null>(null);
@@ -259,6 +305,25 @@ function Room({ net, me, setMe, room, onLeave }: { net: Transport; me: PlayerMet
     return () => offs.forEach((o) => o());
   }, [bus, nameOf, pushFeed, setMe]);
 
+  // Leaving browser full screen (Esc, system back) leaves immersive mode on desktop too.
+  useEffect(() => {
+    const onFs = () => {
+      if (!document.fullscreenElement && !isTouch()) setImmersive(false);
+    };
+    document.addEventListener('fullscreenchange', onFs);
+    return () => document.removeEventListener('fullscreenchange', onFs);
+  }, [setImmersive]);
+
+  const toggleImmersive = () => {
+    if (immersive) {
+      setImmersive(false);
+      exitFullscreen();
+    } else {
+      setImmersive(true);
+      enterFullscreen();
+    }
+  };
+
   // F toggles autofire
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -297,18 +362,24 @@ function Room({ net, me, setMe, room, onLeave }: { net: Transport; me: PlayerMet
   const showMaker = maker || (!current && waitedForMap);
 
   return (
-    <div className="relative mx-auto flex h-[calc(100dvh-var(--nav-h))] w-full max-w-[1800px] flex-col px-2 pb-2 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1 pb-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="font-display truncate text-2xl font-extrabold tracking-tight sm:text-3xl">{current?.map.title ?? 'Ink Arena'}</h1>
-          <button type="button" onClick={copyInvite} className="label rounded-[var(--wobble-btn)] border-2 border-ink bg-accent px-2 py-0.5 text-[0.7rem] text-accent-ink" title="Copy invite link">
-            room {room} · {copied ? 'link copied' : 'invite'}
+    <div
+      className={
+        immersive
+          ? 'fixed inset-0 z-[60] flex flex-col bg-paper px-2 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]'
+          : 'relative mx-auto flex h-[calc(100dvh-var(--nav-h))] w-full max-w-[1800px] flex-col px-2 pb-2 sm:px-6'
+      }
+    >
+      <div className={`flex items-center justify-between gap-x-4 gap-y-2 px-1 ${immersive ? 'flex-nowrap pb-1' : 'flex-wrap pb-2'}`}>
+        <div className={`flex items-center gap-x-3 gap-y-1 ${immersive ? 'min-w-0 shrink flex-nowrap [@media(max-height:520px)]:shrink-0' : 'min-w-0 flex-wrap'}`}>
+          <h1 className={`font-display truncate font-extrabold tracking-tight ${immersive ? `text-xl ${SHORT_HIDE}` : 'text-2xl sm:text-3xl'}`}>{current?.map.title ?? 'Ink Arena'}</h1>
+          <button type="button" onClick={copyInvite} className="label shrink-0 whitespace-nowrap rounded-[var(--wobble-btn)] border-2 border-ink bg-accent px-2 py-0.5 text-[0.7rem] text-accent-ink" title="Copy invite link">
+            {immersive ? room : `room ${room}`} · {copied ? 'copied' : 'invite'}
           </button>
-          <span className="label text-[0.62rem] text-graphite" title={net.kind === 'online' ? 'Supabase Realtime' : 'BroadcastChannel: other tabs of this browser only'}>
+          <span className={`label text-[0.62rem] text-graphite ${immersive ? SHORT_HIDE : ''}`} title={net.kind === 'online' ? 'Supabase Realtime' : 'BroadcastChannel: other tabs of this browser only'}>
             {net.kind === 'online' ? `online · ${board.length} here` : `this browser only · ${board.length} here`}
           </span>
         </div>
-        <div className="label flex flex-wrap items-center gap-3 tabular-nums">
+        <div className={`label flex items-center gap-2 tabular-nums sm:gap-3 [&_button]:whitespace-nowrap ${immersive ? 'min-w-0 flex-nowrap overflow-x-auto' : 'flex-wrap'}`}>
           {hud && (
             <>
               <Meter label="HP" value={hud.hp / 100} tone={hud.hp > 35 ? 'accent' : 'hazard'} text={String(hud.hp)} />
@@ -319,7 +390,10 @@ function Room({ net, me, setMe, room, onLeave }: { net: Transport; me: PlayerMet
           <button type="button" onClick={() => setAutofire((a) => !a)} aria-pressed={autofire} className={`btn-sm px-3 py-1 ${autofire ? 'btn-game' : 'btn-ghost'}`} title="F">
             Autofire {autofire ? 'on' : 'off'}
           </button>
-          <button type="button" onClick={toggleMuted} className="btn-ghost btn-sm px-3 py-1" aria-pressed={!muted}>
+          <button type="button" onClick={toggleImmersive} aria-pressed={immersive} className="btn-ghost btn-sm px-3 py-1" title="Full screen">
+            {immersive ? 'Exit full' : 'Full screen'}
+          </button>
+          <button type="button" onClick={toggleMuted} className={`btn-ghost btn-sm px-3 py-1 ${immersive ? SHORT_HIDE : ''}`} aria-pressed={!muted}>
             {muted ? 'Sound off' : 'Sound on'}
           </button>
           {current && host && (
@@ -379,13 +453,28 @@ function Room({ net, me, setMe, room, onLeave }: { net: Transport; me: PlayerMet
         </div>
       </div>
 
-      <div className="flex items-center gap-4 px-1 pt-2">
+      <div className={`flex items-center gap-4 px-1 pt-2 ${immersive ? 'hidden' : ''}`}>
         <p className="font-hand min-w-0 flex-1 truncate text-base text-graphite" title={current?.map.story}>
           {current?.note ?? current?.map.story ?? 'Waiting for a map.'}
         </p>
-        <p className="font-hand hidden shrink-0 text-base text-graphite lg:block">A/D move · W/Space jetpack · mouse aim · click fire · R reload · F autofire</p>
+        <p className="font-hand hidden shrink-0 text-base text-graphite lg:block">A/D move · W/Space jetpack · autofire aims for you · F to aim yourself · R reload</p>
       </div>
-      <ArenaTouch bus={bus} />
+      {current && !showMaker && <ArenaTouch bus={bus} />}
+      {!portraitOk && (
+        <div className="pointer-coarse:portrait:grid fixed inset-0 z-[70] hidden place-items-center bg-paper p-8 text-center" role="dialog" aria-label="Rotate your phone">
+          <div className="grid justify-items-center gap-4">
+            <svg viewBox="0 0 64 64" className="h-20 w-20 animate-[spin_2.4s_ease-in-out_infinite] motion-reduce:animate-none" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden>
+              <rect x="20" y="8" width="24" height="44" rx="4" />
+              <path d="M29 46h6" />
+            </svg>
+            <p className="font-display text-3xl font-extrabold">Turn your phone sideways</p>
+            <p className="font-hand text-lg text-graphite">The arena is wide. Landscape shows you the whole fight.</p>
+            <button type="button" onClick={() => setPortraitOk(true)} className="btn-ghost btn-sm px-4 py-2">
+              Play in portrait anyway
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -393,9 +482,9 @@ function Room({ net, me, setMe, room, onLeave }: { net: Transport; me: PlayerMet
 function Meter({ label, value, tone, text }: { label: string; value: number; tone: 'accent' | 'hazard' | 'sky'; text?: string }) {
   const fill = tone === 'accent' ? 'bg-accent' : tone === 'hazard' ? 'bg-hazard' : 'bg-sky';
   return (
-    <span className="flex items-center gap-1.5" title={label}>
-      {label}
-      <span className="relative h-3 w-16 overflow-hidden rounded-full border-2 border-ink bg-card">
+    <span className="flex shrink-0 items-center gap-1.5" title={label}>
+      <span className="[@media(max-height:520px)]:sr-only">{label}</span>
+      <span className="relative h-3 w-16 overflow-hidden rounded-full border-2 border-ink bg-card [@media(max-height:520px)]:w-12">
         <span className={`absolute inset-y-0 left-0 ${fill}`} style={{ width: `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%` }} />
       </span>
       {text}
@@ -545,7 +634,7 @@ function ArenaTouch({ bus }: { bus: ArenaBus }) {
     onPointerCancel: () => bus.emit('touch', { [key]: false }),
     onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
   });
-  const btn = 'grid h-16 w-16 touch-none select-none place-items-center rounded-[var(--wobble-btn)] border-[2.5px] border-ink bg-card text-2xl font-bold text-ink shadow-[var(--shadow-hard)] active:translate-y-1 active:bg-accent active:shadow-none';
+  const btn = 'grid h-16 w-16 [@media(max-height:520px)]:h-14 [@media(max-height:520px)]:w-14 touch-none select-none place-items-center rounded-[var(--wobble-btn)] border-[2.5px] border-ink bg-card text-2xl font-bold text-ink shadow-[var(--shadow-hard)] active:translate-y-1 active:bg-accent active:shadow-none';
   return (
     <div className="pointer-coarse:flex fixed inset-x-0 bottom-0 z-30 hidden items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="flex gap-3">
