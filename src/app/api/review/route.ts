@@ -1,4 +1,5 @@
 import { AIError, generateJSON } from '@/lib/ai';
+import { provider } from '@/lib/env';
 import { CANNED_VERDICTS, REVIEW_SYSTEM, reviewPrompt } from '@/lib/ai/prompts';
 import { ReviewRequestSchema, type ApiErrorBody, type ReviewResponse } from '@/lib/api-types';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
@@ -48,7 +49,8 @@ export async function POST(req: Request) {
         timeoutMs: 20_000,
         mock: () => canned(stats),
       });
-      review = { ...res.data, source: 'model' };
+      // The mock provider answers with the canned lines, so say so.
+      review = { ...res.data, source: provider === 'mock' ? 'canned' : 'model' };
     } catch (e) {
       console.warn('[review] falling back to canned verdict:', e instanceof AIError ? e.code : e);
       review = canned(stats);
