@@ -174,7 +174,7 @@ every call to it is best-effort with a timeout.
 
 ## Run your own copy
 
-Requires Node 20+ and **pnpm**.
+Requires Node 20.9+ and **pnpm**.
 
 ```bash
 git clone https://github.com/dhananjay-123/inkplay.git
@@ -239,6 +239,7 @@ working on the UI without an API key.
 | `pnpm dev` | dev server |
 | `pnpm build` / `pnpm start` | production build / serve |
 | `pnpm start:offline` | production server with `MODEL_PROVIDER=ollama` |
+| `pnpm lint` | ESLint |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm test:model` | smoke-test the configured provider on a sample |
 | `pnpm test:vision [files…]` | headless OpenCV run on the samples (or given JPEGs) → `.out/` |
@@ -255,13 +256,20 @@ working on the UI without an API key.
 - Arena maps and survival chunks are data too. They come from a whitelist,
   get clamped and cleaned up, and are validated again when a map arrives
   from another player.
-- Server keys never reach the client. `/api/parse`, `/api/review` and
-  `/api/arena/map` are rate-limited per IP.
+- Messages from other arena players are validated and rate-limited before
+  they touch the game (`src/lib/arena/wire.ts`).
+- Server keys never reach the client. The API routes are rate-limited per
+  IP, request bodies are size-capped, and the site sends a Content Security
+  Policy and the usual security headers.
+
+Found a security problem? Please report it privately, see
+[SECURITY.md](SECURITY.md).
 
 ## Contributing
 
-Issues and pull requests are welcome. Please use **pnpm**, keep TypeScript
-strict, and run `pnpm build` before opening a PR. Design notes are in
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for setup (no API key needed with `MODEL_PROVIDER=mock`) and the checks to
+run before a PR, and the [Code of Conduct](CODE_OF_CONDUCT.md). Design notes are in
 [`docs/SPEC.md`](docs/SPEC.md), and the reasoning behind non-obvious choices
 is in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 

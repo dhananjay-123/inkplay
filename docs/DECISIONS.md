@@ -271,3 +271,31 @@ decision, why.
   next solid ground rather than ending the run.
 - Key presses use `JustDown` (latched) so a tap shorter than a frame still
   jumps; touch is tap/swipe-up to jump and swipe-down to slide.
+
+### D23 — Pre-launch hardening
+- **Peers are untrusted.** Anyone with the public anon key can join a
+  Realtime channel, so every arena message (broadcast, presence and the
+  `BroadcastChannel` fallback) is parsed by `src/lib/arena/wire.ts` before
+  it touches game state: bounded finite numbers, short names, hex colours,
+  capped arrays (shot lists are trimmed, not rejected). A receive-side
+  flood guard drops more than 40 messages/s from one sender or 400/s in
+  total, and the scene caps remote players (16) and projectiles (800).
+  Cheating (claiming kills, a forged join time to become host) is still
+  possible by design; crashes and freezes are not.
+- **Security headers without nonces.** Pages are static / partially
+  prerendered, so a nonce CSP would force every page dynamic. The CSP
+  allows `'unsafe-inline'` scripts (Next's bootstrap) and `'unsafe-eval'` +
+  `'wasm-unsafe-eval'` (the vision worker evaluates OpenCV.js and its
+  WebAssembly), and pins everything else: `connect-src` is self + the
+  Supabase project, `frame-ancestors 'none'`, `object-src 'none'`. Plus
+  nosniff, Referrer-Policy, Permissions-Policy and HSTS.
+- **Client-reported run stats** are limited per IP (30 runs/min, 6 per
+  level/min) and "wins" under a second aren't counted. They stay cosmetic:
+  the gallery's plays/wins/best time are for fun, not a leaderboard.
+- **Rate limiter** stays in memory per instance (Vercel's firewall is the
+  durable layer), but it no longer clears all keys at 5000: it evicts
+  unthrottled keys first, so a flood of new IPs can't reset everyone.
+- **Model text** stored in the gallery is capped in characters (not only
+  words) and links are stripped; it is only ever rendered as React text.
+- **Bodies** are read with a size cap (`src/lib/read-json.ts`) because a
+  self-hosted `next start` has no platform body limit.
