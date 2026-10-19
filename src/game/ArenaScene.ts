@@ -68,6 +68,9 @@ const BASE = {
 } as const;
 
 const SCALE = 0.7; // drawPlayer canvas is 56x64
+/** Hard caps so a misbehaving peer cannot flood the scene (honest rooms stay far below). */
+const MAX_REMOTES = 16;
+const MAX_PROJECTILES = 800;
 const BODY = { w: 30, h: 42 };
 const ENEMY = {
   walker: { hp: 60, speed: 75, fireMs: 950, range: 620, size: [40, 44] },
@@ -558,6 +561,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private addProj(x: number, y: number, a: number, w: WeaponId, mul: number, owner: string, color: number) {
+    if (this.projs.length >= MAX_PROJECTILES) return;
     const s = WEAPONS[w].speed;
     this.projs.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - (w === 'grenade' ? 220 : 0), age: 0, owner, w, mul, color });
   }
@@ -666,9 +670,11 @@ export class ArenaScene extends Phaser.Scene {
 
   /* ---------------- network ---------------- */
 
-  private remote(id: string, name: string, color: string): Remote {
+  private remote(id: string, name: string, color: string): Remote | null {
     let r = this.remotes.get(id);
     if (r) return r;
+    // More players than a room holds means someone is spamming fake ids.
+    if (this.remotes.size >= MAX_REMOTES) return null;
     r = {
       id,
       sprite: this.add.image(0, 0, this.heroTexture(color)).setScale(SCALE).setDepth(18),
@@ -725,7 +731,8 @@ export class ArenaScene extends Phaser.Scene {
         if (stale) this.dropRemote(stale);
         return;
       }
-      const r = this.remote(m.id, m.nm ?? '...', m.c ?? PALETTE.graphite);
+      const r = this.remote(m.id, m.nm || '...', m.c);
+      if (!r) return;
       this.setLook(r, m.nm, m.c);
       r.last = now;
       r.away = !!m.away;

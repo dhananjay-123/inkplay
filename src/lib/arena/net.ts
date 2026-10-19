@@ -3,6 +3,7 @@
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import type { ArenaMap } from './schema';
+import { floodGuard, parseNetMsg, parsePeerMeta } from './wire';
 
 /**
  * Room transport. Online: a Supabase Realtime channel (broadcast for game
@@ -85,8 +86,9 @@ class Emitter<T> {
   }
 }
 
-const isMeta = (v: unknown): v is PlayerMeta =>
-  !!v && typeof v === 'object' && typeof (v as PlayerMeta).id === 'string' && typeof (v as PlayerMeta).name === 'string';
+/** More players than a room ever holds: anything past this is junk presence. */
+const MAX_PEERS = 32;
+const isPeer = (v: PlayerMeta | null): v is PlayerMeta => v !== null;
 
 /**
  * Supabase Realtime room with a watchdog. supabase-js can keep a channel it
@@ -103,6 +105,7 @@ class SupabaseTransport implements Transport {
   private closed = false;
   private msgs = new Emitter<NetMsg>();
   private peers = new Emitter<PlayerMeta[]>();
+  private guard = floodGuard();
   private ch!: RealtimeChannel;
   private meta: PlayerMeta | null = null;
   private lastRecv = performance.now();
@@ -133,14 +136,16 @@ class SupabaseTransport implements Transport {
     ch.on('broadcast', { event: 'm' }, ({ payload }) => {
       if (ch !== this.ch) return;
       this.lastRecv = performance.now();
-      this.msgs.emit(payload as NetMsg);
+      const msg = parseNetMsg(payload);
+      if (msg && this.guard(msg)) this.msgs.emit(msg);
     });
     ch.on('presence', { event: 'sync' }, () => {
       if (ch !== this.ch) return;
       this.lastRecv = performance.now();
       const list = Object.values(ch.presenceState())
-        .map((metas) => metas[0] as unknown)
-        .filter(isMeta);
+        .slice(0, MAX_PEERS)
+        .map((metas) => parsePeerMeta(metas[0]))
+        .filter(isPeer);
       this.peerCount = list.length;
       this.peers.emit(list);
     });
@@ -232,21 +237,30 @@ class LocalTransport implements Transport {
   private msgs = new Emitter<NetMsg>();
   private peers = new Emitter<PlayerMeta[]>();
   private seen = new Map<string, { meta: PlayerMeta; at: number }>();
+  private guard = floodGuard();
   private me: PlayerMeta | null = null;
   private timer: ReturnType<typeof setInterval>;
   constructor(room: string) {
     this.bc = new BroadcastChannel(`inkplay-arena-${room}`);
-    this.bc.onmessage = (e: MessageEvent<LocalWire>) => {
-      const m = e.data;
-      if (m.t === '_hb') {
-        const fresh = !this.seen.has(m.meta.id);
-        this.seen.set(m.meta.id, { meta: m.meta, at: Date.now() });
+    this.bc.onmessage = (e: MessageEvent<unknown>) => {
+      const m = e.data as unknown;
+      if (!m || typeof m !== 'object') return;
+      const t = (m as { t?: unknown }).t;
+      if (t === '_hb') {
+        const meta = parsePeerMeta((m as { meta?: unknown }).meta);
+        if (!meta || (!this.seen.has(meta.id) && this.seen.size >= MAX_PEERS)) return;
+        const fresh = !this.seen.has(meta.id);
+        this.seen.set(meta.id, { meta, at: Date.now() });
         if (fresh && this.me) this.bc.postMessage({ t: '_hb', meta: this.me } satisfies LocalWire);
         this.publish();
-      } else if (m.t === '_bye') {
-        this.seen.delete(m.id);
+      } else if (t === '_bye') {
+        const id = (m as { id?: unknown }).id;
+        if (typeof id === 'string') this.seen.delete(id);
         this.publish();
-      } else this.msgs.emit(m);
+      } else {
+        const msg = parseNetMsg(m);
+        if (msg && this.guard(msg)) this.msgs.emit(msg);
+      }
     };
     this.timer = setInterval(() => {
       if (this.me) this.bc.postMessage({ t: '_hb', meta: this.me } satisfies LocalWire);
