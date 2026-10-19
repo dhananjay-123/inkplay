@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArenaBus, type ArenaEvents, type ArenaHud } from '@/game/arena-events';
+import { ArenaBus, isTyping, type ArenaEvents, type ArenaHud } from '@/game/arena-events';
 import { ARENA_COLORS } from '@/game/art';
 import { play as sfx, setMuted } from '@/game/sfx';
 import { CHAT_MAX, QUICK_CHAT, chatLimiter, cleanChat } from '@/lib/arena/chat';
@@ -240,6 +240,8 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
   const sendLimit = useMemo(() => chatLimiter(), []);
   // A little looser than my own send limit, so honest players never get dropped.
   const recvLimit = useMemo(() => chatLimiter(6, 8000, 300), []);
+  // And for the whole room, so made-up ids can't add up to a flood.
+  const roomLimit = useMemo(() => chatLimiter(20, 8000, 0), []);
 
   useEffect(() => setMuted(muted), [muted]);
   useEffect(() => {
@@ -319,12 +321,12 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
         pushFeed(`${nameOf(m.killer)} popped an ink monster`, mineKill);
         if (mineKill) creditKill();
       } else if (m.t === 'chat') {
-        if (m.id === mine.id || mutedRef.current.has(m.id) || !recvLimit(m.id)) return;
+        // Only players on the roster may talk; name and colour come from the roster, not the message.
+        const peer = peersRef.current.find((p) => p.id === m.id);
+        if (!peer || m.id === mine.id || mutedRef.current.has(m.id) || !recvLimit(m.id) || !roomLimit('room')) return;
         const text = cleanChat(m.text);
         if (!text) return;
-        // Presence is the trusted name/colour; the message's own copy covers the first second.
-        const peer = peersRef.current.find((p) => p.id === m.id);
-        addChat({ id: m.id, name: peer?.name ?? cleanChat(m.nm)?.slice(0, 16) ?? 'someone', color: peer?.color ?? m.c, text, mine: false });
+        addChat({ id: m.id, name: peer.name, color: peer.color, text, mine: false });
         sfx('click');
       }
     });
@@ -345,7 +347,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
       clearTimeout(t);
       clearTimeout(retry);
     };
-  }, [net, bus, me.id, adopt, broadcastMap, nameOf, pushFeed, creditKill, addChat, recvLimit]);
+  }, [net, bus, me.id, adopt, broadcastMap, nameOf, pushFeed, creditKill, addChat, recvLimit, roomLimit]);
 
   // ---------- scene → React
   useEffect(() => {
@@ -413,7 +415,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
     const text = cleanChat(raw);
     if (!text) return true;
     if (!sendLimit(me.id)) return false;
-    net.send({ t: 'chat', id: me.id, nm: me.name, c: me.color, text });
+    net.send({ t: 'chat', id: me.id, text });
     addChat({ id: me.id, name: me.name, color: me.color, text, mine: true });
     return true;
   };
@@ -424,23 +426,9 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
     if (next.has(id)) setChat((c) => c.filter((l) => l.id !== id));
   };
 
-  // Enter or T opens chat (not while typing or clicking somewhere else).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.key !== 'Enter' && e.key.toLowerCase() !== 't') || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-      if ((e.target as HTMLElement | null)?.closest('input, textarea, button, [role="dialog"]')) return;
-      e.preventDefault();
-      setChatOpen(true);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
   // Any text box in the room (chat, map theme) borrows the keyboard from the game while focused.
   useEffect(() => {
-    const check = () => {
-      const el = document.activeElement;
-      bus.emit('typing', !!el?.matches('textarea, input:not([type="range"]):not([type="file"]):not([type="checkbox"])'));
-    };
+    const check = () => bus.emit('typing', isTyping());
     document.addEventListener('focusin', check);
     document.addEventListener('focusout', check);
     return () => {
@@ -672,13 +660,21 @@ function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAl
   const logRef = useRef<HTMLOListElement>(null);
 
   useEffect(() => {
-    if (!open) return;
-    inputRef.current?.focus();
-    // Esc closes it even when the box itself doesn't have focus.
+    if (open) inputRef.current?.focus();
+    // Closed: Enter or T opens it (not from another text box or a focused button).
+    // Open: Esc closes it, even when the box itself doesn't have focus.
+    // Lives here, so it's off whenever the chat isn't on screen (map maker open).
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      setOpen(false);
-      inputRef.current?.blur();
+      if (open) {
+        if (e.key !== 'Escape') return;
+        setOpen(false);
+        inputRef.current?.blur();
+        return;
+      }
+      if ((e.key !== 'Enter' && e.key.toLowerCase() !== 't') || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ((e.target as HTMLElement | null)?.closest('input, textarea, select, button, a')) return;
+      e.preventDefault();
+      setOpen(true);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -706,33 +702,37 @@ function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAl
   return (
     // Phones: below the minimap, clear of the thumb controls.
     <div className="absolute bottom-2 left-2 z-20 grid w-[min(22rem,62%)] gap-1 pointer-coarse:bottom-auto pointer-coarse:top-[21%]">
-      {shown.length > 0 && (
-        <ol
-          ref={logRef}
-          aria-live="polite"
-          aria-label="Room chat"
-          className={`grid gap-0.5 ${open ? 'max-h-48 overflow-y-auto rounded-[var(--wobble)] border-2 border-ink bg-card/90 p-2' : 'pointer-events-none'}`}
-        >
-          {shown.map((l) => (
-            <li key={l.key} className={`font-hand group flex items-baseline gap-1.5 text-base leading-snug ${open ? '' : 'w-fit rounded-[var(--wobble-btn)] bg-card/80 px-2'}`}>
-              <span className="h-2 w-2 shrink-0 self-center rounded-full border border-ink" style={{ background: l.color }} />
-              <span className={`min-w-0 break-words ${l.mine ? 'text-pop' : ''}`}>
-                <b className="font-bold">{l.name}</b> {l.text}
-              </span>
-              {open && !l.mine && (
-                <button
-                  type="button"
-                  onClick={() => onMute(l.id)}
-                  className="label ml-auto shrink-0 text-[0.6rem] text-graphite opacity-0 group-hover:opacity-100 focus:opacity-100 pointer-coarse:opacity-100"
-                  title={`Hide messages from ${l.name}`}
-                >
-                  mute
-                </button>
-              )}
-            </li>
-          ))}
-        </ol>
-      )}
+      {/* Always mounted: screen readers only announce live regions that already exist. */}
+      <ol
+        ref={logRef}
+        aria-live="polite"
+        aria-label="Room chat"
+        className={`grid gap-0.5 ${open && shown.length ? 'max-h-48 overflow-y-auto rounded-[var(--wobble)] border-2 border-ink bg-card/90 p-2' : 'pointer-events-none'}`}
+      >
+        {shown.map((l) => (
+          <li key={l.key} className={`font-hand group flex items-baseline gap-1.5 text-base leading-snug ${open ? '' : 'w-fit rounded-[var(--wobble-btn)] bg-card/80 px-2'}`}>
+            <span className="h-2 w-2 shrink-0 self-center rounded-full border border-ink" style={{ background: l.color }} />
+            {/* bdi: a right-to-left name can't flip the message that follows it. */}
+            <span className={`min-w-0 break-words ${l.mine ? 'text-pop' : ''}`}>
+              <b className="font-bold">
+                <bdi>{l.name}</bdi>
+              </b>{' '}
+              <bdi>{l.text}</bdi>
+            </span>
+            {open && !l.mine && (
+              <button
+                type="button"
+                onClick={() => onMute(l.id)}
+                aria-label={`Mute ${l.name}`}
+                className="label -my-1 ml-auto shrink-0 px-1.5 py-1 text-[0.6rem] text-graphite opacity-0 group-hover:opacity-100 focus:opacity-100 pointer-coarse:px-3 pointer-coarse:opacity-100"
+                title={`Hide messages from ${l.name}`}
+              >
+                mute
+              </button>
+            )}
+          </li>
+        ))}
+      </ol>
 
       {open ? (
         <div className="grid gap-1 rounded-[var(--wobble)] border-2 border-ink bg-card/95 p-2">
@@ -777,7 +777,7 @@ function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAl
           )}
         </div>
       ) : (
-        <button type="button" onClick={() => setOpen(true)} className="label w-fit rounded-[var(--wobble-btn)] border-2 border-ink bg-card/90 px-2 py-0.5 text-[0.62rem]" title="Enter or T">
+        <button type="button" onClick={() => setOpen(true)} className="label w-fit rounded-[var(--wobble-btn)] border-2 border-ink bg-card/90 px-2 py-0.5 text-[0.62rem] pointer-coarse:px-4 pointer-coarse:py-2" title="Enter or T">
           chat<span className="pointer-coarse:hidden"> · enter</span>
         </button>
       )}

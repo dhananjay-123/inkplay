@@ -39,6 +39,10 @@ export type ArenaEvents = {
   typing: boolean;
 };
 
+/** Text boxes that need the keys the game captures (sliders, files, checkboxes don't). */
+const TEXT_ENTRY = 'textarea, input:not([type="range"]):not([type="file"]):not([type="checkbox"])';
+export const isTyping = () => typeof document !== 'undefined' && !!document.activeElement?.matches(TEXT_ENTRY);
+
 type Handler<T> = (payload: T) => void;
 
 /** Typed event bus between the arena page and its Phaser scene. */

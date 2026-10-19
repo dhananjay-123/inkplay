@@ -65,8 +65,8 @@ export type NetMsg =
   | { t: 'map'; map: ArenaMap; from: string; round: number; note?: string }
   | { t: 'needmap'; from: string }
   | { t: 'pick'; i: number; by: string }
-  /** Room chat; name + colour ride along like on state messages. */
-  | { t: 'chat'; id: string; nm: string; c: string; text: string };
+  /** Room chat; receivers take the name and colour from the roster, never the message. */
+  | { t: 'chat'; id: string; text: string };
 
 export interface Transport {
   readonly kind: 'online' | 'local';

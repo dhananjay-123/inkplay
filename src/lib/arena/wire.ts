@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { NetMsg, PlayerMeta } from './net';
+import { cleanName } from './chat';
 
 /**
  * Everything that arrives from a room is untrusted: any client with the
@@ -11,7 +12,8 @@ import type { NetMsg, PlayerMeta } from './net';
 /** Finite and in a sane range (world px are ~2400 x 1350). */
 const n = z.number().min(-1e6).max(1e6);
 const id = z.string().min(1).max(40);
-const name = z.string().max(16);
+/** Names are shown next to chat and over players: strip invisible/bidi chars, links, swears. */
+const name = z.string().max(16).transform(cleanName);
 /** Map rounds are Date.now() of when the map was made. */
 const round = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const color = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
@@ -58,7 +60,7 @@ const NetMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('needmap'), from: id }),
   z.object({ t: z.literal('pick'), i: z.number().int().min(0).max(64), by: id }),
   // Length only here; arena-client runs cleanChat (masking, invisible chars) before showing it.
-  z.object({ t: z.literal('chat'), id, nm: name, c: color, text: z.string().min(1).max(400) }),
+  z.object({ t: z.literal('chat'), id, text: z.string().min(1).max(400) }),
 ]);
 
 export function parseNetMsg(raw: unknown): NetMsg | null {
@@ -68,7 +70,7 @@ export function parseNetMsg(raw: unknown): NetMsg | null {
 
 const MetaSchema = z.object({
   id,
-  name: z.string().transform((s) => s.slice(0, 16)),
+  name: z.string().transform((s) => cleanName(s) || 'player'),
   color,
   kills: z.number().int().min(0).max(1e6).catch(0),
   deaths: z.number().int().min(0).max(1e6).catch(0),

@@ -4,7 +4,7 @@ import { ARENA_WORLD, MAX_BOTS, arenaTuning, type ArenaMap, type EnemyKind, type
 import { BUFFS, BUFF_IDS, CHAINSAW_SECONDS, MAX_GRENADES, SHIELD_HP, START_GRENADES, WEAPONS, WEAPON_IDS, type BuffId, type WeaponId } from '@/lib/arena/weapons';
 import { sampleSrc } from '@/lib/samples';
 import { ARENA_COLORS, PALETTE, drawArena, drawCrumble, drawEnemy, drawPickup, drawPlayer, hex } from './art';
-import type { ArenaBus } from './arena-events';
+import { isTyping, type ArenaBus } from './arena-events';
 import { play } from './sfx';
 
 /**
@@ -376,6 +376,14 @@ export class ArenaScene extends Phaser.Scene {
       reload: [kb.addKey(K.R)],
       grenade: [kb.addKey(K.G), kb.addKey(K.Q)],
     };
+    // Phaser swallows captured keys (W, A, D, Space…) page-wide; a text box needs them.
+    const setTyping = (on: boolean) => {
+      if (on) {
+        kb.disableGlobalCapture();
+        kb.resetKeys();
+      } else kb.enableGlobalCapture();
+      kb.enabled = !on;
+    };
     this.input.mouse?.disableContextMenu();
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (!p.wasTouch) this.usingMouse = true;
@@ -395,15 +403,10 @@ export class ArenaScene extends Phaser.Scene {
       bus.on('autofire', (on) => (this.autofire = on)),
       bus.on('bots', (n) => (this.botTarget = Phaser.Math.Clamp(Math.round(n), 0, MAX_BOTS))),
       bus.on('chat', ({ id, text }) => this.say(id, text)),
-      bus.on('typing', (on) => {
-        // Phaser swallows captured keys (W, A, D, Space…) page-wide; a chat box needs them.
-        if (on) {
-          kb.disableGlobalCapture();
-          kb.resetKeys();
-        } else kb.enableGlobalCapture();
-        kb.enabled = !on;
-      }),
+      bus.on('typing', setTyping),
     );
+    // A new map can start while someone is mid-sentence in the chat box.
+    if (isTyping()) setTyping(true);
     // Keepalive: a hidden tab stops Phaser's loop; keep telling the room we're here (marked away).
     const keepalive = window.setInterval(() => {
       if (performance.now() - this.lastSentAt > 450) this.sendState(true);
@@ -424,6 +427,8 @@ export class ArenaScene extends Phaser.Scene {
 
   /** Speech bubble over a player's name for a few seconds (newest line replaces the last). */
   private say(id: string, line: string) {
+    // Only over someone we can see: no text objects for ids that aren't in the arena.
+    if (id !== this.cfg.me.id && !this.remotes.has(id)) return;
     this.bubbles.get(id)?.text.destroy();
     const text = this.add
       .text(0, 0, line, {

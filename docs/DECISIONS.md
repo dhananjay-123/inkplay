@@ -312,10 +312,22 @@ decision, why.
   common swears (a short list, matched across dots and repeats; the odd
   false positive like "shitake" is accepted). Text is only ever rendered
   as React text or a Phaser text object.
+- **Only the roster talks.** A line is shown only if its sender id is on
+  the room's presence roster, and the name and colour come from the roster
+  (whose names get the same cleaning), never from the message. Speech
+  bubbles are only drawn over players actually in the arena.
 - **Rate limits.** Senders hold themselves to 5 lines per 8 s, 0.5 s apart;
-  receivers drop a sender past 6 per 8 s. Any player can be muted locally
-  from the open chat log. No server-side moderation, by design (no server).
+  receivers drop a sender past 6 per 8 s and the whole room past 20 per
+  8 s, on top of the transport's flood guard. Any player can be muted
+  locally from the open chat log. No server-side moderation, by design.
+- **Impersonation is possible.** Like state messages, a chat line's sender
+  id is self-declared, so a crafted client can post as someone on the
+  roster. Fixing that needs a server that knows who sent what (a relay, or
+  Realtime private channels with per-user auth); out of scope for a
+  serverless room. Muting works per id, so it also mutes the person being
+  impersonated (until you leave the room or unmute).
 - **Keyboard hand-off.** Phaser captures W/A/D/Space page-wide, which
   would eat them in any text box. While a text input in the room has
   focus the scene disables its keyboard and global capture (`typing` bus
-  event), and resets held keys so the player doesn't keep running.
+  event), and resets held keys so the player doesn't keep running. A new
+  map builds a new game, which checks for a focused text box at start.

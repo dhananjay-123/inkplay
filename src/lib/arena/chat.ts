@@ -32,6 +32,11 @@ export function cleanChat(raw: string): string | null {
   return text ? text : null;
 }
 
+/** Player names get the same cleaning (they sit right next to chat text), then the 16-char cap. */
+export function cleanName(raw: string): string {
+  return cleanChat(raw.slice(0, 64))?.slice(0, 16) ?? '';
+}
+
 /**
  * Sliding-window limiter: at most `count` messages per `windowMs`, and no two
  * closer than `gapMs`. Used per sender on receive, and on my own send so an
