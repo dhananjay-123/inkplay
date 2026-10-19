@@ -79,9 +79,17 @@ export type Level = z.infer<typeof LevelSchema>;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const num = z.preprocess((v) => (typeof v === 'string' ? Number(v) : v), z.number().finite());
-const words = (s: string, n: number) => s.trim().split(/\s+/).slice(0, n).join(' ');
-const sentences = (s: string, n: number) =>
-  (s.trim().match(/[^.!?]+[.!?]*/g) ?? [s]).slice(0, n).join('').trim();
+/**
+ * Model text is shown publicly in the gallery, and the drawing can carry
+ * prompt injection, so every string is capped in characters as well as words
+ * and loses anything that looks like a link (it is always rendered as plain
+ * text, never HTML).
+ */
+const tidy = (s: string, max: number) =>
+  s.replace(/\b(?:https?:\/\/|www\.)\S+/gi, '').replace(/\s+/g, ' ').trim().slice(0, max).trim();
+const words = (s: string, n: number, max = 80) => tidy(s.trim().split(/\s+/).slice(0, n).join(' '), max);
+const sentences = (s: string, n: number, max = 240) =>
+  tidy((s.trim().match(/[^.!?]+[.!?]*/g) ?? [s]).slice(0, n).join('').trim(), max);
 
 /** Coerce near-misses ("Platform", "spikes") before strict validation. */
 const ROLE_ALIASES: Record<string, Role> = {
@@ -116,8 +124,8 @@ function normalizeLabel(raw: unknown): MarkLabel | null {
   const l = parsed.data;
   return {
     ...l,
-    what: words(l.what, 6),
-    personality: l.role === 'enemy' && l.personality ? words(l.personality, 8) : undefined,
+    what: words(l.what, 6, 48),
+    personality: l.role === 'enemy' && l.personality ? words(l.personality, 8, 80) : undefined,
     behaviour: l.role === 'enemy' ? l.behaviour ?? 'patrol' : undefined,
   };
 }
@@ -142,7 +150,7 @@ function normalizeRule(raw: unknown): Rule | null {
     case 'enemy_speed': return { ...rule, value: clamp(rule.value, 0.25, 3) };
     case 'enemies_accelerate': return { ...rule, everySeconds: clamp(rule.everySeconds, 3, 60) };
     case 'time_limit': return { ...rule, seconds: clamp(Math.round(rule.seconds), 10, 300) };
-    case 'boss': return { ...rule, name: words(rule.name, 6), attack: words(rule.attack, 8) };
+    case 'boss': return { ...rule, name: words(rule.name, 6, 48), attack: words(rule.attack, 8, 64) };
     default: return rule;
   }
 }
@@ -173,12 +181,16 @@ export const LevelFromModel = z
       return true;
     });
     return {
-      title: words(str(o.title, 'Untitled Doodle'), 5),
+      title: words(str(o.title, 'Untitled Doodle'), 5, 60) || 'Untitled Doodle',
       story: sentences(str(o.story, 'A brave scribble sets off across the page.'), 2),
       difficulty: diff.success ? clamp(Math.round(diff.data), 1, 10) : 5,
       labels: o.labels.map(normalizeLabel).filter((l): l is MarkLabel => l !== null),
       rules,
-      rawRuleText: o.rawRuleText.filter((t): t is string => typeof t === 'string' && t.trim() !== '').slice(0, 12),
+      rawRuleText: o.rawRuleText
+        .filter((t): t is string => typeof t === 'string')
+        .map((t) => tidy(t, 120))
+        .filter((t) => t !== '')
+        .slice(0, 12),
       designerNote: sentences(str(o.designerNote, 'Bold lines. Bolder choices.'), 1),
     };
   })
@@ -226,7 +238,7 @@ export type Review = z.infer<typeof ReviewSchema>;
 
 export const ReviewFromModel = z
   .object({ verdict: z.string().min(1), stars: num })
-  .transform((r): Review => ({ verdict: sentences(r.verdict, 2), stars: clamp(Math.round(r.stars), 1, 5) }));
+  .transform((r): Review => ({ verdict: sentences(r.verdict, 2, 280), stars: clamp(Math.round(r.stars), 1, 5) }));
 
 /* ---------- Fixer output ---------- */
 
