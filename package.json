@@ -2,6 +2,19 @@
   "name": "inkplay",
   "version": "0.1.0",
   "private": true,
+  "description": "Draw a level on paper, write the rules in words, and play it. Plus a multiplayer jetpack arena and an endless runner.",
+  "license": "MIT",
+  "homepage": "https://inkplay-lemon.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhananjay-123/inkplay.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dhananjay-123/inkplay/issues"
+  },
+  "engines": {
+    "node": ">=20.9"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
