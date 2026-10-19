@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored, minified third-party code (OpenCV.js).
+    "public/**",
+    // Local scratch output (gitignored).
+    ".out/**",
   ]),
 ]);
 

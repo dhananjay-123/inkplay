@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ROLE_COLOR, ROLE_LABEL } from '@/lib/rules-display';
 import type { Mark, MarkLabel } from '@/lib/schema';
 
@@ -16,27 +16,9 @@ type Props = {
  * the AI reads, then each label types itself next to its mark.
  */
 export function MarksReveal({ image, marks, labels, rescue = [] }: Props) {
-  const [shown, setShown] = useState(0);
-  const [typed, setTyped] = useState(0);
   const reduced = usePrefersReducedMotion();
-
-  useEffect(() => {
-    if (reduced) {
-      setShown(marks.length);
-      return;
-    }
-    setShown(0);
-    const iv = setInterval(() => setShown((n) => (n >= marks.length ? (clearInterval(iv), n) : n + 1)), 90);
-    return () => clearInterval(iv);
-  }, [marks, reduced]);
-
-  useEffect(() => {
-    if (!labels) return setTyped(0);
-    if (reduced) return setTyped(labels.length);
-    setTyped(0);
-    const iv = setInterval(() => setTyped((n) => (n >= labels.length ? (clearInterval(iv), n) : n + 1)), 140);
-    return () => clearInterval(iv);
-  }, [labels, reduced]);
+  const shown = useCountUp(marks, marks.length, 90, reduced);
+  const typed = useCountUp(labels, labels?.length ?? 0, 140, reduced);
 
   const labelById = new Map(labels?.map((l) => [l.id, l]) ?? []);
   const order = labels?.map((l) => l.id) ?? [];
@@ -83,14 +65,34 @@ export function MarksReveal({ image, marks, labels, rescue = [] }: Props) {
   );
 }
 
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
+/**
+ * Counts 0 → total, one step per `stepMs`, restarting whenever `source`
+ * changes (instantly at total with reduced motion). Counter state is tagged
+ * with its source so a new source starts at 0 without a reset in the effect.
+ */
+function useCountUp(source: unknown, total: number, stepMs: number, reduced: boolean): number {
+  const [state, setState] = useState({ source, n: 0 });
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduced(mq.matches);
-    const on = () => setReduced(mq.matches);
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
-  return reduced;
+    if (reduced || !total) return;
+    let n = 0;
+    const iv = setInterval(() => {
+      n = Math.min(n + 1, total);
+      setState({ source, n });
+      if (n >= total) clearInterval(iv);
+    }, stepMs);
+    return () => clearInterval(iv);
+  }, [source, total, stepMs, reduced]);
+  if (reduced) return total;
+  return state.source === source ? state.n : 0;
+}
+
+const REDUCED_QUERY = '(prefers-reduced-motion: reduce)';
+function subscribeReduced(cb: () => void) {
+  const mq = window.matchMedia(REDUCED_QUERY);
+  mq.addEventListener('change', cb);
+  return () => mq.removeEventListener('change', cb);
+}
+
+function usePrefersReducedMotion(): boolean {
+  return useSyncExternalStore(subscribeReduced, () => window.matchMedia(REDUCED_QUERY).matches, () => false);
 }
