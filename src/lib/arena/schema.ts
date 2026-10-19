@@ -350,7 +350,7 @@ export function finalizeArena(d: DraftArena, seed: number, sampleId?: string): A
   // Top up with platform tops, widest first, spread across the map.
   const rand = mulberry32(seed ^ 0x5eed);
   const tops = [...platforms].filter((p) => !p.crumble).sort((a, b) => b.w - a.w);
-  for (let tries = 0; spawns.length < MIN_SPAWNS && tries < 200; tries++) {
+  for (let tries = 0; tops.length && spawns.length < MIN_SPAWNS && tries < 200; tries++) {
     const p = tops[tries % tops.length];
     const pt = { x: p.x + PW + rand() * Math.max(0, p.w - 2 * PW), y: p.y - 0.002 };
     if (free(pt) && (farEnough(pt) || tries > 120)) spawns.push(pt);
