@@ -5,6 +5,7 @@ import { PARSE_SYSTEM, parsePrompt } from '@/lib/ai/prompts';
 import { ParseRequestSchema, type ApiErrorBody, type ParseResponse } from '@/lib/api-types';
 import { fixLevel } from '@/lib/fixer';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
+import { readJson } from '@/lib/read-json';
 import { LevelFromModel, LevelSchema, reconcileLabels } from '@/lib/schema';
 import { saveLevel } from '@/lib/supabase/server';
 
@@ -24,12 +25,8 @@ export async function POST(req: Request) {
   const limited = rateLimit(`parse:${clientKey(req)}`, 8, 60_000);
   if (!limited.ok) return err(429, 'rate_limited', 'Easy there, Picasso. Try again in a moment.', limited.retryAfterS);
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return err(400, 'bad_request', 'That drawing got lost in the post.');
-  }
+  // Two images of up to 2.3 MB each plus the marks.
+  const body = await readJson(req, 5_000_000);
   const parsed = ParseRequestSchema.safeParse(body);
   if (!parsed.success) return err(400, 'bad_request', 'That drawing got lost in the post.');
   const { somImage, cleanImage, marks, title } = parsed.data;

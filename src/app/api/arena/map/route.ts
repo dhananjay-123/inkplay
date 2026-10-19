@@ -4,6 +4,7 @@ import { ARENA_DRAWING_SYSTEM, ARENA_SYSTEM, arenaDrawingPrompt, arenaThemePromp
 import { arenaFromDrawing, mockMarkLabels, proceduralArena, proceduralDraft } from '@/lib/arena/procedural';
 import { ArenaFromModel, ArenaLabelsFromModel, DEFAULT_OPTIONS, MapOptionsSchema, applyOptions, finalizeArena, type ArenaMap, type ArenaMapResponse } from '@/lib/arena/schema';
 import { clientKey, rateLimit } from '@/lib/rate-limit';
+import { readJson } from '@/lib/read-json';
 import { MAX_MARKS, MarkSchema } from '@/lib/schema';
 
 export const maxDuration = 60;
@@ -34,12 +35,7 @@ export async function POST(req: Request) {
   const limited = rateLimit(`arena:${clientKey(req)}`, 8, 60_000);
   if (!limited.ok) return err(429, 'rate_limited', 'Easy there, general. Try again in a moment.', limited.retryAfterS);
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return err(400, 'bad_request', 'That request got lost in the post.');
-  }
+  const body = await readJson(req, 5_000_000);
   const parsed = RequestSchema.safeParse(body);
   if (!parsed.success) return err(400, 'bad_request', 'That request got lost in the post.');
   const input = parsed.data;
