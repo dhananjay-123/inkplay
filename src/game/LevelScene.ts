@@ -309,7 +309,14 @@ export class LevelScene extends Phaser.Scene {
       bus.on('restart', () => this.restartRun()),
       bus.on('giveUp', () => this.end('death')),
     );
-    this.events.once('shutdown', () => this.unsub.forEach((u) => u()));
+    // game.destroy() (React unmount, "Play again") fires DESTROY but not SHUTDOWN.
+    const cleanup = () => {
+      this.events.off('shutdown', cleanup);
+      this.events.off('destroy', cleanup);
+      this.unsub.forEach((u) => u());
+    };
+    this.events.once('shutdown', cleanup);
+    this.events.once('destroy', cleanup);
 
     this.startedAt = this.time.now;
     this.bot.lastX = this.player.x;

@@ -204,10 +204,15 @@ export class SurvivalScene extends Phaser.Scene {
       bus.on('pause', (p) => this.setPaused(p)),
     );
     this.events.on('postupdate', this.sync, this);
-    this.events.once('shutdown', () => {
+    // game.destroy() (React unmount) fires DESTROY but not SHUTDOWN.
+    const cleanup = () => {
+      this.events.off('shutdown', cleanup);
+      this.events.off('destroy', cleanup);
       this.unsub.forEach((u) => u());
       this.events.off('postupdate', this.sync, this);
-    });
+    };
+    this.events.once('shutdown', cleanup);
+    this.events.once('destroy', cleanup);
 
     this.cameras.main.scrollX = this.runner.x - RUNNER_X;
     if (!this.reduced) this.tweens.add({ targets: this.look, scaleY: 0.94, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
