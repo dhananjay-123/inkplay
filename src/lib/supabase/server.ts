@@ -49,6 +49,9 @@ function toSaved(sb: SupabaseClient, r: LevelRow): SavedLevel {
   };
 }
 
+/** JPEG start-of-image marker (the vision step always encodes a JPEG). */
+const isJpeg = (b: Buffer) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+
 /** Best effort: returns the new id, or null on any failure. Never throws. */
 export async function saveLevel(level: PlayableLevel, marks: Mark[], cleanImageB64: string): Promise<string | null> {
   const sb = supabaseAdmin();
@@ -57,6 +60,8 @@ export async function saveLevel(level: PlayableLevel, marks: Mark[], cleanImageB
     const id = crypto.randomUUID();
     const path = `levels/${id}.jpg`;
     const bytes = Buffer.from(cleanImageB64.replace(/^data:[^;]+;base64,/, ''), 'base64');
+    // The bucket is public: only ever host what we claim it is, a JPEG.
+    if (!isJpeg(bytes)) throw new Error('clean image is not a JPEG');
     const up = await withTimeout(sb.storage.from(BUCKET).upload(path, bytes, { contentType: 'image/jpeg', upsert: false }), 8000);
     if (up.error) throw up.error;
     const ins = await withTimeout(
