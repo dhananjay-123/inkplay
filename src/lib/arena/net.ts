@@ -64,7 +64,9 @@ export type NetMsg =
   | { t: 'die'; victim: string; killer: string | null }
   | { t: 'map'; map: ArenaMap; from: string; round: number; note?: string }
   | { t: 'needmap'; from: string }
-  | { t: 'pick'; i: number; by: string };
+  | { t: 'pick'; i: number; by: string }
+  /** Room chat; name + colour ride along like on state messages. */
+  | { t: 'chat'; id: string; nm: string; c: string; text: string };
 
 export interface Transport {
   readonly kind: 'online' | 'local';

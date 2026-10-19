@@ -299,3 +299,23 @@ decision, why.
   words) and links are stripped; it is only ever rendered as React text.
 - **Bodies** are read with a size cap (`src/lib/read-json.ts`) because a
   self-hosted `next start` has no platform body limit.
+
+### D24 — Room chat in Ink Arena
+
+- **Same pipe as the game.** Chat is one more `NetMsg` (`t: 'chat'`) on the
+  room transport, so it works online (Realtime broadcast) and offline
+  (`BroadcastChannel`) with no server, no table and no history: a line
+  lives only in the browsers that were in the room.
+- **Untrusted twice.** `wire.ts` checks the shape and length;
+  `src/lib/arena/chat.ts` `cleanChat` then strips control, zero-width and
+  bidi characters, caps at 120 chars, turns links into `[link]` and masks
+  common swears (a short list, matched across dots and repeats; the odd
+  false positive like "shitake" is accepted). Text is only ever rendered
+  as React text or a Phaser text object.
+- **Rate limits.** Senders hold themselves to 5 lines per 8 s, 0.5 s apart;
+  receivers drop a sender past 6 per 8 s. Any player can be muted locally
+  from the open chat log. No server-side moderation, by design (no server).
+- **Keyboard hand-off.** Phaser captures W/A/D/Space page-wide, which
+  would eat them in any text box. While a text input in the room has
+  focus the scene disables its keyboard and global capture (`typing` bus
+  event), and resets held keys so the player doesn't keep running.

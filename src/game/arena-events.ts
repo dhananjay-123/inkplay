@@ -33,6 +33,10 @@ export type ArenaEvents = {
   autofire: boolean;
   /** Set the number of AI players. */
   bots: number;
+  /** A chat line (already cleaned): shown as a speech bubble over that player. */
+  chat: { id: string; text: string };
+  /** A text field has focus: let go of the keyboard so W/A/D/Space type. */
+  typing: boolean;
 };
 
 type Handler<T> = (payload: T) => void;

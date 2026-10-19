@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArenaBus, type ArenaEvents, type ArenaHud } from '@/game/arena-events';
 import { ARENA_COLORS } from '@/game/art';
 import { play as sfx, setMuted } from '@/game/sfx';
+import { CHAT_MAX, QUICK_CHAT, chatLimiter, cleanChat } from '@/lib/arena/chat';
 import { connectRoom, type NetMsg, type PlayerMeta, type Transport } from '@/lib/arena/net';
 import { proceduralArena } from '@/lib/arena/procedural';
 import { DEFAULT_OPTIONS, MAX_BOTS, parseWireMap, type ArenaMap, type ArenaMapResponse, type MapOptions } from '@/lib/arena/schema';
@@ -20,6 +21,11 @@ const ROOM_RE = /^[A-Z0-9]{3,8}$/;
 type Profile = { name: string; color: string };
 type Current = { map: ArenaMap; round: number; from: string; note?: string; source?: ArenaMapResponse['source'] };
 type Feed = { key: number; text: string; mine: boolean };
+type ChatLine = { key: number; id: string; name: string; color: string; text: string; fresh: boolean; mine: boolean };
+
+/** Closed chat shows lines this fresh; open chat shows the history. */
+const CHAT_FRESH_MS = 12_000;
+const CHAT_KEEP = 50;
 
 /** Phones and tablets: play immersive + landscape by default. */
 const isTouch = () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
@@ -187,7 +193,7 @@ export function ArenaClient() {
         </div>
       </form>
       <p className="font-hand mt-6 text-lg text-graphite">
-        A/D to move, W or Space to jump and jetpack, G or right-click for a grenade. Walk over crates for rifles, flamethrowers, chainsaws, rockets, shields and boosts. Autofire aims and shoots at the nearest enemy you can see; turn it off (F) to aim with the mouse and click to fire. R reloads.
+        A/D to move, W or Space to jump and jetpack, G or right-click for a grenade. Walk over crates for rifles, flamethrowers, chainsaws, rockets, shields and boosts. Autofire aims and shoots at the nearest enemy you can see; turn it off (F) to aim with the mouse and click to fire. R reloads. Enter or T opens the room chat.
       </p>
     </div>
   );
@@ -227,8 +233,18 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
   const peersRef = useRef<PlayerMeta[]>([]);
   const lastMapHeard = useRef(0);
   const feedKey = useRef(0);
+  const [chat, setChat] = useState<ChatLine[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [mutedIds, setMutedIds] = useState<ReadonlySet<string>>(new Set());
+  const mutedRef = useRef(mutedIds);
+  const sendLimit = useMemo(() => chatLimiter(), []);
+  // A little looser than my own send limit, so honest players never get dropped.
+  const recvLimit = useMemo(() => chatLimiter(6, 8000, 300), []);
 
   useEffect(() => setMuted(muted), [muted]);
+  useEffect(() => {
+    mutedRef.current = mutedIds;
+  }, [mutedIds]);
   useEffect(() => {
     meRef.current = me;
     net.track(me);
@@ -253,6 +269,17 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
     setFeed((f) => [...f.slice(-4), { key, text, mine }]);
     setTimeout(() => setFeed((f) => f.filter((x) => x.key !== key)), 6000);
   }, []);
+
+  const addChat = useCallback(
+    (line: Omit<ChatLine, 'key' | 'fresh'>) => {
+      const key = ++feedKey.current;
+      setChat((c) => [...c.slice(-(CHAT_KEEP - 1)), { ...line, key, fresh: true }]);
+      bus.emit('chat', { id: line.id, text: line.text });
+      // Fade it out of the closed view on time.
+      setTimeout(() => setChat((c) => c.map((l) => (l.key === key ? { ...l, fresh: false } : l))), CHAT_FRESH_MS);
+    },
+    [bus],
+  );
 
   const adopt = useCallback((c: Current) => {
     currentRef.current = c;
@@ -291,6 +318,14 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
         const mineKill = m.killer === mine.id;
         pushFeed(`${nameOf(m.killer)} popped an ink monster`, mineKill);
         if (mineKill) creditKill();
+      } else if (m.t === 'chat') {
+        if (m.id === mine.id || mutedRef.current.has(m.id) || !recvLimit(m.id)) return;
+        const text = cleanChat(m.text);
+        if (!text) return;
+        // Presence is the trusted name/colour; the message's own copy covers the first second.
+        const peer = peersRef.current.find((p) => p.id === m.id);
+        addChat({ id: m.id, name: peer?.name ?? cleanChat(m.nm)?.slice(0, 16) ?? 'someone', color: peer?.color ?? m.c, text, mine: false });
+        sfx('click');
       }
     });
     const offPeers = net.onPeers((list) => {
@@ -310,7 +345,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
       clearTimeout(t);
       clearTimeout(retry);
     };
-  }, [net, bus, me.id, adopt, broadcastMap, nameOf, pushFeed, creditKill]);
+  }, [net, bus, me.id, adopt, broadcastMap, nameOf, pushFeed, creditKill, addChat, recvLimit]);
 
   // ---------- scene → React
   useEffect(() => {
@@ -372,6 +407,48 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
     return () => window.removeEventListener('keydown', onKey);
   }, []);
   useEffect(() => bus.emit('autofire', autofire), [bus, autofire]);
+
+  /** Returns false when rate-limited (the box keeps the text). */
+  const sendChat = (raw: string): boolean => {
+    const text = cleanChat(raw);
+    if (!text) return true;
+    if (!sendLimit(me.id)) return false;
+    net.send({ t: 'chat', id: me.id, nm: me.name, c: me.color, text });
+    addChat({ id: me.id, name: me.name, color: me.color, text, mine: true });
+    return true;
+  };
+  const toggleMute = (id: string) => {
+    const next = new Set(mutedIds);
+    if (!next.delete(id)) next.add(id);
+    setMutedIds(next);
+    if (next.has(id)) setChat((c) => c.filter((l) => l.id !== id));
+  };
+
+  // Enter or T opens chat (not while typing or clicking somewhere else).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key !== 'Enter' && e.key.toLowerCase() !== 't') || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ((e.target as HTMLElement | null)?.closest('input, textarea, button, [role="dialog"]')) return;
+      e.preventDefault();
+      setChatOpen(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  // Any text box in the room (chat, map theme) borrows the keyboard from the game while focused.
+  useEffect(() => {
+    const check = () => {
+      const el = document.activeElement;
+      bus.emit('typing', !!el?.matches('textarea, input:not([type="range"]):not([type="file"]):not([type="checkbox"])'));
+    };
+    document.addEventListener('focusin', check);
+    document.addEventListener('focusout', check);
+    return () => {
+      document.removeEventListener('focusin', check);
+      document.removeEventListener('focusout', check);
+      bus.emit('typing', false);
+    };
+  }, [bus]);
 
   const publish = (map: ArenaMap, extra: Pick<Current, 'note' | 'source'> = {}) => {
     // The round is a timestamp, so a map made after a reload is still newer than the one before it.
@@ -520,13 +597,25 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
           )}
 
           {/* kill feed */}
-          <ul className="pointer-events-none absolute bottom-2 left-2 z-10 grid gap-1">
+          <ul className="pointer-events-none absolute bottom-2 right-2 z-10 grid justify-items-end gap-1">
             {feed.map((f) => (
               <li key={f.key} className={`font-hand rounded-[var(--wobble-btn)] border-2 border-ink px-2 text-base ${f.mine ? 'bg-accent text-accent-ink' : 'bg-card/90'}`}>
                 {f.text}
               </li>
             ))}
           </ul>
+
+          {current && !showMaker && (
+            <RoomChat
+              lines={chat}
+              open={chatOpen}
+              setOpen={setChatOpen}
+              onSend={sendChat}
+              onMute={toggleMute}
+              mutedCount={mutedIds.size}
+              onUnmuteAll={() => setMutedIds(new Set())}
+            />
+          )}
 
           {hud?.respawnIn != null && (
             <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-paper/40">
@@ -542,7 +631,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
         <p className="font-hand min-w-0 flex-1 truncate text-base text-graphite" title={current?.map.story}>
           {current?.note ?? current?.map.story ?? 'Waiting for a map.'}
         </p>
-        <p className="font-hand hidden shrink-0 text-base text-graphite lg:block">A/D move · W/Space jump + jetpack · G grenade · autofire aims for you · F to aim yourself · R reload</p>
+        <p className="font-hand hidden shrink-0 text-base text-graphite lg:block">A/D move · W/Space jump + jetpack · G grenade · autofire aims for you · F to aim yourself · R reload · Enter chat</p>
       </div>
       {current && !showMaker && <ArenaTouch bus={bus} />}
       {!portraitOk && (
@@ -559,6 +648,138 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
             </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- chat */
+
+type RoomChatProps = {
+  lines: ChatLine[];
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  onSend: (text: string) => boolean;
+  onMute: (id: string) => void;
+  mutedCount: number;
+  onUnmuteAll: () => void;
+};
+
+function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAll }: RoomChatProps) {
+  const [draft, setDraft] = useState('');
+  const [slow, setSlow] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const logRef = useRef<HTMLOListElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    inputRef.current?.focus();
+    // Esc closes it even when the box itself doesn't have focus.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      inputRef.current?.blur();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, setOpen]);
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
+  }, [lines, open]);
+
+  const close = () => {
+    setOpen(false);
+    inputRef.current?.blur();
+  };
+  const send = (text: string, keepOpen = false) => {
+    if (!onSend(text)) {
+      setSlow(true);
+      setTimeout(() => setSlow(false), 1500);
+      return;
+    }
+    setDraft('');
+    if (!keepOpen) close();
+  };
+
+  const shown = open ? lines : lines.filter((l) => l.fresh).slice(-5);
+
+  return (
+    // Phones: below the minimap, clear of the thumb controls.
+    <div className="absolute bottom-2 left-2 z-20 grid w-[min(22rem,62%)] gap-1 pointer-coarse:bottom-auto pointer-coarse:top-[21%]">
+      {shown.length > 0 && (
+        <ol
+          ref={logRef}
+          aria-live="polite"
+          aria-label="Room chat"
+          className={`grid gap-0.5 ${open ? 'max-h-48 overflow-y-auto rounded-[var(--wobble)] border-2 border-ink bg-card/90 p-2' : 'pointer-events-none'}`}
+        >
+          {shown.map((l) => (
+            <li key={l.key} className={`font-hand group flex items-baseline gap-1.5 text-base leading-snug ${open ? '' : 'w-fit rounded-[var(--wobble-btn)] bg-card/80 px-2'}`}>
+              <span className="h-2 w-2 shrink-0 self-center rounded-full border border-ink" style={{ background: l.color }} />
+              <span className={`min-w-0 break-words ${l.mine ? 'text-pop' : ''}`}>
+                <b className="font-bold">{l.name}</b> {l.text}
+              </span>
+              {open && !l.mine && (
+                <button
+                  type="button"
+                  onClick={() => onMute(l.id)}
+                  className="label ml-auto shrink-0 text-[0.6rem] text-graphite opacity-0 group-hover:opacity-100 focus:opacity-100 pointer-coarse:opacity-100"
+                  title={`Hide messages from ${l.name}`}
+                >
+                  mute
+                </button>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {open ? (
+        <div className="grid gap-1 rounded-[var(--wobble)] border-2 border-ink bg-card/95 p-2">
+          <div className="flex flex-wrap gap-1">
+            {QUICK_CHAT.map((q) => (
+              <button key={q} type="button" onClick={() => send(q, true)} className="btn-ghost btn-sm px-2 py-0 text-sm">
+                {q}
+              </button>
+            ))}
+          </div>
+          <form
+            className="flex gap-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (draft.trim()) send(draft);
+              else close();
+            }}
+          >
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.slice(0, CHAT_MAX))}
+              maxLength={CHAT_MAX}
+              placeholder="say something, Enter sends"
+              aria-label="Chat message"
+              enterKeyHint="send"
+              autoComplete="off"
+              className="min-w-0 flex-1 rounded-[var(--wobble-btn)] border-2 border-ink bg-card px-2 py-1 text-base outline-none focus:shadow-[var(--shadow-hard)]"
+            />
+            <button type="submit" className="btn-game btn-sm px-3 py-1">
+              Send
+            </button>
+            <button type="button" onClick={close} aria-label="Close chat" className="btn-ghost btn-sm px-2 py-1">
+              ✕
+            </button>
+          </form>
+          {slow && <p className="font-hand text-sm text-hazard">Slow down a little, then try again.</p>}
+          {mutedCount > 0 && (
+            <button type="button" onClick={onUnmuteAll} className="font-hand link-scrawl justify-self-start text-sm text-graphite">
+              {mutedCount} muted · show them again
+            </button>
+          )}
+        </div>
+      ) : (
+        <button type="button" onClick={() => setOpen(true)} className="label w-fit rounded-[var(--wobble-btn)] border-2 border-ink bg-card/90 px-2 py-0.5 text-[0.62rem]" title="Enter or T">
+          chat<span className="pointer-coarse:hidden"> · enter</span>
+        </button>
       )}
     </div>
   );

@@ -57,6 +57,8 @@ const NetMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('map'), map: z.unknown(), from: z.string().max(40), round, note: z.string().transform((s) => s.slice(0, 120)).optional() }),
   z.object({ t: z.literal('needmap'), from: id }),
   z.object({ t: z.literal('pick'), i: z.number().int().min(0).max(64), by: id }),
+  // Length only here; arena-client runs cleanChat (masking, invisible chars) before showing it.
+  z.object({ t: z.literal('chat'), id, nm: name, c: color, text: z.string().min(1).max(400) }),
 ]);
 
 export function parseNetMsg(raw: unknown): NetMsg | null {
@@ -108,6 +110,7 @@ function senderOf(m: NetMsg): string {
     case 'map':
     case 'needmap': return m.from;
     case 'pick': return m.by;
+    case 'chat': return m.id;
     case 'die': return m.victim;
     default: return `?${m.t}`;
   }

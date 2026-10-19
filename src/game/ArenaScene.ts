@@ -181,6 +181,8 @@ export class ArenaScene extends Phaser.Scene {
   private keys!: Record<'left' | 'right' | 'jet' | 'reload' | 'grenade', Phaser.Input.Keyboard.Key[]>;
   private touch = { left: false, right: false, jet: false, grenade: false };
   private usingMouse = false;
+  /** Chat speech bubbles by player id. */
+  private bubbles = new Map<string, { text: Phaser.GameObjects.Text; until: number }>();
   private remotes = new Map<string, Remote>();
   private metas = new Map<string, PlayerMeta>();
   private npcs: Npc[] = [];
@@ -392,6 +394,15 @@ export class ArenaScene extends Phaser.Scene {
       bus.on('touch', (t) => Object.assign(this.touch, t)),
       bus.on('autofire', (on) => (this.autofire = on)),
       bus.on('bots', (n) => (this.botTarget = Phaser.Math.Clamp(Math.round(n), 0, MAX_BOTS))),
+      bus.on('chat', ({ id, text }) => this.say(id, text)),
+      bus.on('typing', (on) => {
+        // Phaser swallows captured keys (W, A, D, Space…) page-wide; a chat box needs them.
+        if (on) {
+          kb.disableGlobalCapture();
+          kb.resetKeys();
+        } else kb.enableGlobalCapture();
+        kb.enabled = !on;
+      }),
     );
     // Keepalive: a hidden tab stops Phaser's loop; keep telling the room we're here (marked away).
     const keepalive = window.setInterval(() => {
@@ -409,6 +420,36 @@ export class ArenaScene extends Phaser.Scene {
     const key = `hero-${color}`;
     if (!this.textures.exists(key)) this.textures.addCanvas(key, drawPlayer(color));
     return key;
+  }
+
+  /** Speech bubble over a player's name for a few seconds (newest line replaces the last). */
+  private say(id: string, line: string) {
+    this.bubbles.get(id)?.text.destroy();
+    const text = this.add
+      .text(0, 0, line, {
+        fontFamily: this.cfg.handFont,
+        fontSize: '19px',
+        color: PALETTE.ink,
+        backgroundColor: '#FFFAF0',
+        padding: { x: 7, y: 3 },
+        wordWrap: { width: 240, useAdvancedWrap: true },
+        align: 'center',
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(23);
+    this.bubbles.set(id, { text, until: performance.now() + 2500 + line.length * 60 });
+  }
+
+  private drawBubbles(now: number) {
+    for (const [id, b] of this.bubbles) {
+      const label = id === this.cfg.me.id ? this.myLabel : this.remotes.get(id)?.label;
+      if (!label || now > b.until) {
+        b.text.destroy();
+        this.bubbles.delete(id);
+        continue;
+      }
+      b.text.setPosition(label.x, label.y - label.height - 4).setVisible(label.visible).setAlpha(Math.min(1, (b.until - now) / 400));
+    }
   }
 
   private nameTag(name: string) {
@@ -1392,6 +1433,7 @@ export class ArenaScene extends Phaser.Scene {
       if (this.has('speed', now)) this.myGfx.lineStyle(3, 0x5cc8ff, 0.8).lineBetween(this.player.x - 30, this.player.y + 10, this.player.x - 14, this.player.y + 10);
     }
     this.myLabel.setPosition(this.player.x, this.player.y - 36).setVisible(this.alive);
+    this.drawBubbles(now);
 
     this.stepProjectiles(dt, walls, myRect);
     this.drawHazards(now);
