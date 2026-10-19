@@ -1,4 +1,5 @@
--- INKPLAY — Supabase schema (gallery only; the core loop never needs this).
+-- INKPLAY: Supabase schema for the gallery (the core loop never needs this).
+-- Ink Arena rooms use Realtime broadcast + presence and need no tables.
 -- Paste into the Supabase SQL editor and run once. Safe to re-run.
 
 create extension if not exists pgcrypto;
@@ -17,6 +18,14 @@ create table if not exists public.levels (
 );
 
 create index if not exists levels_created_at_idx on public.levels (created_at desc);
+
+-- A saved level is a few KB; refuse anything absurd even from the server.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'levels_level_json_size') then
+    alter table public.levels add constraint levels_level_json_size check (pg_column_size(level_json) < 262144);
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------- runs
 create table if not exists public.runs (
@@ -71,6 +80,10 @@ grant execute on function public.record_run(uuid, text, int, real) to service_ro
 
 -- ---------------------------------------------------------------- storage
 -- Public-read bucket for the cleaned drawings: levels/{id}.jpg
-insert into storage.buckets (id, name, public)
-values ('drawings', 'drawings', true)
-on conflict (id) do update set public = true;
+-- Uploads only come from the server (service role). No storage.objects
+-- policies are created for anon/authenticated on purpose, so the public can
+-- read files by URL but cannot list, upload, change or delete them.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('drawings', 'drawings', true, 3145728, array['image/jpeg'])
+on conflict (id) do update
+  set public = true, file_size_limit = 3145728, allowed_mime_types = array['image/jpeg'];
