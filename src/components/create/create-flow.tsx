@@ -45,6 +45,8 @@ export function CreateFlow() {
   const [line, setLine] = useState(0);
   const [dragging, setDragging] = useState(false);
   const lastParse = useRef(0);
+  // State lags a fast double click; the ref doesn't.
+  const inFlight = useRef(false);
   const title = useRef<string | undefined>(undefined); // player's own level name, kept for retries
   const fileInput = useRef<HTMLInputElement>(null);
   const busy = phase.kind === 'vision' || phase.kind === 'reading';
@@ -95,7 +97,8 @@ export function CreateFlow() {
 
   const handle = useCallback(
     async (source: Blob | HTMLImageElement, name?: string) => {
-      if (busy) return;
+      if (busy || inFlight.current) return;
+      inFlight.current = true;
       title.current = name;
       setPhase({ kind: 'vision' });
       try {
@@ -108,6 +111,8 @@ export function CreateFlow() {
       } catch (e) {
         console.error(e);
         setPhase({ kind: 'error', retryable: false, message: 'Couldn’t read that image. Try another photo?' });
+      } finally {
+        inFlight.current = false;
       }
     },
     [busy, parse],
@@ -124,7 +129,15 @@ export function CreateFlow() {
   };
 
   const loadSample = async (id: string) => {
-    const blob = await fetch(sampleSrc(id)).then((r) => r.blob());
+    let blob: Blob;
+    try {
+      const res = await fetch(sampleSrc(id));
+      if (!res.ok) throw new Error(`sample ${res.status}`);
+      blob = await res.blob();
+    } catch {
+      setPhase({ kind: 'error', retryable: false, message: 'Couldn’t load that sample. Try another one?' });
+      return;
+    }
     setMode('choose');
     void handle(blob);
   };
