@@ -492,6 +492,11 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
 
   return (
     <div
+      // A mouse/touch click shouldn't leave the button focused: Enter would press it again
+      // instead of opening chat. Keyboard clicks (detail 0) keep focus for keyboard users.
+      onClick={(e) => {
+        if (e.detail > 0) (e.target as HTMLElement).closest('button')?.blur();
+      }}
       className={
         immersive
           ? 'fixed inset-0 z-[60] flex flex-col bg-paper px-2 pb-1 pt-[max(0.25rem,env(safe-area-inset-top))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]'
