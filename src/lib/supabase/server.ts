@@ -76,6 +76,8 @@ export async function saveLevel(level: PlayableLevel, marks: Mark[], cleanImageB
   }
 }
 
+const LIST_COLUMNS = 'id, created_at, title, difficulty, image_path, plays, wins, best_time';
+
 export async function listLevels(page: number, pageSize: number): Promise<SavedLevel[]> {
   const sb = supabaseAdmin();
   if (!sb) return [];
@@ -83,7 +85,7 @@ export async function listLevels(page: number, pageSize: number): Promise<SavedL
     const from = page * pageSize;
     const res = await withTimeout(
       sb.from('levels')
-        .select('id, created_at, title, difficulty, image_path, plays, wins, best_time')
+        .select(LIST_COLUMNS)
         .order('created_at', { ascending: false })
         .range(from, from + pageSize - 1),
       6000,
@@ -100,7 +102,7 @@ export async function getLevel(id: string): Promise<SavedLevelDetail | null> {
   const sb = supabaseAdmin();
   if (!sb) return null;
   try {
-    const res = await withTimeout(sb.from('levels').select('*').eq('id', id).maybeSingle(), 6000);
+    const res = await withTimeout(sb.from('levels').select(`${LIST_COLUMNS}, level_json`).eq('id', id).maybeSingle(), 6000);
     if (res.error) throw res.error;
     const row = res.data as LevelRow | null;
     if (!row?.level_json) return null;
