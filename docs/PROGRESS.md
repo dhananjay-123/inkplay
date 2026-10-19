@@ -65,7 +65,7 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 - [x] Error/loading states, reduced motion
 - [x] Rate limit, 429 handling
 - [x] Perf: cursor idles, Phaser preloaded on `/create`, OpenCV + samples cached a day (D15)
-- [ ] Offline check in the browser (`pnpm build` online → Wi-Fi off → `pnpm demo`)
+- [ ] Offline check in the browser (`pnpm build` online → Wi-Fi off → `pnpm start:offline`)
 - [ ] Lighthouse ≥ 85
 
 ### Survival mode

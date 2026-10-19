@@ -8,7 +8,7 @@ import type { ArenaMap } from './schema';
  * Room transport. Online: a Supabase Realtime channel (broadcast for game
  * traffic, presence for the roster + scoreboard), so nothing goes through
  * Vercel functions. Offline / no Supabase: BroadcastChannel between tabs of
- * the same browser, so the stage demo still works in airplane mode.
+ * the same browser, so offline mode still works in airplane mode.
  */
 
 export type PlayerMeta = { id: string; name: string; color: string; kills: number; deaths: number; joinedAt: number };

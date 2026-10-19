@@ -4,7 +4,7 @@ import { SYMBOLS } from '@/components/guide/symbols';
 
 export const metadata = { title: 'How to draw a level' };
 
-/* What you draw, which role Gemma gives it, and what that does in the game. */
+/* What you draw, which role the AI gives it, and what that does in the game. */
 const OPEN_VOCAB = [
   { glyph: 'cactus', drawn: 'cactus, fire, lava, saw', role: 'hazard', chip: 'bg-hazard', what: 'touch it and you pop' },
   { glyph: 'trampoline', drawn: 'trampoline, spring, mushroom', role: 'bouncy', chip: 'bg-sun', what: 'launches you up high' },
@@ -64,7 +64,7 @@ export default function GuidePage() {
         How to draw a <span className="highlight">level</span>
       </h1>
       <p className="mt-4 max-w-2xl text-lg text-graphite">
-        These symbols always work. Beyond them, just draw what you mean. Gemma reads doodles, not a fixed legend.
+        These symbols always work. Beyond them, just draw what you mean. The AI reads doodles, not a fixed legend.
       </p>
 
       {/* ------------------------------------------------------------ symbols */}
@@ -86,7 +86,7 @@ export default function GuidePage() {
 
       {/* ------------------------------------------------------ open vocabulary */}
       <Heading n={2}>Or just draw things</Heading>
-      <p className="mt-3 max-w-2xl text-graphite">Common sense decides the role. Some examples Gemma gets right:</p>
+      <p className="mt-3 max-w-2xl text-graphite">Common sense decides the role. Some examples it gets right:</p>
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {OPEN_VOCAB.map((v) => (
           <li key={v.drawn} className="sketch flex items-center gap-4 p-4">
@@ -105,7 +105,7 @@ export default function GuidePage() {
       {/* ------------------------------------------------------------ rules */}
       <Heading n={3}>Write the rules</Heading>
       <p className="mt-3 max-w-2xl text-graphite">
-        Any wording works; Gemma maps it to the closest rule below. Anything that isn&apos;t on this list is politely ignored.
+        Any wording works; it gets mapped to the closest rule below. Anything that isn&apos;t on this list is politely ignored.
       </p>
       <ul className="mt-6 grid gap-3 sm:grid-cols-2">
         {RULES.map(([write, effect]) => (
@@ -132,7 +132,7 @@ export default function GuidePage() {
 
       <Heading n={6}>Bring friends to the arena</Heading>
       <p className="mt-3 max-w-2xl text-lg text-graphite">
-        Ink Arena is a jetpack shooter on a map Gemma designs. Pick a name and a scarf colour, start a room and share the code. Give Gemma a theme
+        Ink Arena is a jetpack shooter on a map made for your room. Pick a name and a scarf colour, start a room and share the code. Give it a theme
         like “hostel rooftops”, hand it a drawing (zigzags stay spikes) or let it surprise you. No one free? Add up to 8 bots.
       </p>
       <ul className="mt-6 grid gap-3 sm:grid-cols-2">

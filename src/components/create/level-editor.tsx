@@ -495,7 +495,7 @@ export function LevelEditor({ initial, templateId, templateName, onPlay, onExit,
 
           {tab === 'rules' && (
             <div className="mt-2">
-              <p className="text-sm text-graphite">Rules are words on the page. Gemma reads them like it reads your handwriting.</p>
+              <p className="text-sm text-graphite">Rules are words on the page. They get read just like your handwriting.</p>
               <form
                 className="mt-3 flex gap-2"
                 onSubmit={(e) => {

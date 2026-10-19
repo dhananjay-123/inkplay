@@ -1,149 +1,117 @@
-# INKPLAY — Paper to Playable
+# INKPLAY
 
 > *Draw it. Write the rules. Play it.*
 
-Draw a game level on any paper with any single pen, scribble the rules in the
-margin in plain words, and snap a photo. **Gemma 4** works out what you
-*meant* and turns it into a playable platformer, using your own ink as the
-level. It runs in the cloud, or fully offline on a laptop with Gemma 4 E4B
-through Ollama.
+Draw a game level on any paper with one pen, scribble the rules in the margin
+in plain words, and snap a photo. INKPLAY works out what you *meant* and
+turns it into a platformer you can play, built from your own ink.
 
-There's also **Ink Arena** (`/arena`): a Mini Militia-style multiplayer
-shooter where Gemma designs the map from a theme, from your drawing, or on
-its own, and friends join with a room code. And **Survival** (`/survival`):
-an endless runner on the same sketchbook page.
+**Play it now:** https://inkplay-lemon.vercel.app. It's free, there are no
+ads and you don't need an account.
 
-**Live:** https://inkplay-lemon.vercel.app · **Code:** https://github.com/dhananjay-123/inkplay
+Three ways to play:
 
-Built for **Hacktoberfest Hack Day Gwalior × ABV-IIITM IEEE**, for the tracks
-*Best Open-Source AI Project* and *Best Use of Gemma 4*. MIT licensed.
+- **Create** (`/create`): photograph a drawing, draw on the in-browser canvas,
+  or start from a sample. Then play your level.
+- **Ink Arena** (`/arena`): a jetpack shooter for you and your friends. You
+  get a map built from a theme or from your drawing, and friends join with a
+  room code. Bots fill the room when you're playing alone.
+- **Survival** (`/survival`): an endless runner on the same sketchbook page.
+  It works on a keyboard or with taps and swipes on a phone.
+
+INKPLAY is open source under the [MIT license](LICENSE). You can run your
+own copy, including fully offline on a laptop with a local model.
 
 ---
 
-## The problem
+## Why INKPLAY
 
-Kids (and adults) draw game levels in the back of notebooks all the time.
-Apps that turn drawings into games already exist (Pixel Press Floors, Draw
-Your Game, Pixicade), but they only understand **fixed colours or fixed
-glyphs**. Red marker means lava and blue marker means water, so you have to
-learn the legend and buy the markers. Drawing for the app isn't the same as
-drawing your idea.
+Other draw-your-own-game apps only understand **fixed colours or fixed
+glyphs**: red marker means lava, blue marker means water. That means
+learning their legend and buying their markers. INKPLAY reads what you drew
+instead:
 
-## What's new: we read meaning
+| You draw / write | INKPLAY makes it |
+|---|---|
+| a cactus | **hazard** |
+| a trampoline | **bouncy** |
+| a cloud | **platform** |
+| a dog with an arrow | **enemy that chases you** |
+| a chai cup | **power-up** |
+| "low gravity" | gravity × 0.5 |
+| "boss: angry mess uncle throws rotis" | a boss fight |
 
-| You draw / write | Other apps | INKPLAY |
-|---|---|---|
-| a cactus | ignored, or "a wall" | **hazard** |
-| a trampoline | a wall | **bouncy** |
-| a cloud | a wall | **platform** |
-| a dog with an arrow | — | **enemy that chases you** |
-| a chai cup | — | **power-up** |
-| "low gravity" | — | gravity × 0.5 |
-| "boss: angry mess uncle throws rotis" | — | a boss fight |
-
-One pen, no legend. Your actual strokes become the level: the hero runs on
-your lines, and the dog you drew walks around.
-
-Photos of paper and **digital drawings** (screenshots, PNGs from drawing
+You only need one pen, and there's no legend to learn. Your actual strokes
+become the level: the hero runs on your lines and the dog you drew walks
+around. Photos of paper and digital drawings (screenshots, PNGs from drawing
 apps) both work.
 
-## On the site
+## Drawing tips
 
-- **Intro film:** the level draws itself and our hero runs it (spikes, coins,
-  a stomped enemy, a double jump over a bat, the star). Skippable.
-- **Rules playground:** toggle handwritten rules (low gravity, heavy gravity,
-  super speed, upside down, night, mirror) on a live mini-level and see the
-  exact JSON rules Gemma would send the game.
-- **Set-of-marks reveal:** every mark boxed and numbered, then Gemma's label
-  types in next to it (`#3 cactus → hazard`).
-- **`/guide`:** what each symbol means, what you can just draw, every rule
-  you can write.
-- **Play:** HUD with coin tracker, one-screen layout, touch controls on
-  phones, Gemma's review on the end card.
+| Mark | Meaning |
+|---|---|
+| straight line | ground / platform |
+| zigzag | spikes |
+| **P** | player |
+| **G** or ★ | goal |
+| **$** | coin |
+| **E** (+ arrow) | enemy (+ direction) |
+| anything else | the AI works it out |
+| words | rules |
 
-## Ink Arena (multiplayer)
+Use a dark pen on plain or lightly ruled paper, and keep the whole page in
+the photo. The full illustrated guide is at `/guide`.
 
-`/arena` turns the same sketchbook into a jetpack shooter for several players
-at once.
+## What's in the game
 
-- **Join:** pick a name and a scarf colour, then start a room or type a
-  room code. Share the invite link. No account needed.
-- **Maps by Gemma:** from a theme ("hostel rooftops"), from a sample or
-  uploaded drawing (zigzags become spikes, the rest of the page is filled
-  in the same style), or "surprise me". A seeded procedural map is always
-  the fallback, so a room never waits on the model.
-- **Map maker options:** number of monsters and AI bots, how many pickups,
-  and which weapons, buffs and hazards to include. Gemma gets them as
-  constraints and the server enforces them.
-- **Play:** jump and jetpack (W/Space), autofire that aims for you (F to aim
-  with the mouse), grenades (G or right-click), and crates with a rifle,
+- **Numbered reveal:** after you upload, every mark is boxed and numbered,
+  and its label types in next to it (`#3 cactus → hazard`). If something
+  was misread, you can see exactly what and redraw it.
+- **Rules playground:** on the home page you can toggle handwritten rules
+  (low gravity, heavy gravity, super speed, upside down, night, mirror) on a
+  live mini-level.
+- **Play:** a HUD with a coin tracker, a one-screen layout, touch controls
+  on phones, and a short review of your run on the end card.
+- **Gallery:** shared levels from other players (when the server has one
+  configured).
+
+### Ink Arena
+
+- **Join:** pick a name and a scarf colour, then start a room or type a room
+  code. Share the invite link. No account needed.
+- **Maps:** built from a theme ("hostel rooftops"), from a sample or uploaded
+  drawing (zigzags become spikes, and the rest of the page is filled in the
+  same style), or "surprise me". If the map maker is slow, a seeded
+  procedural map takes over, so a room never waits.
+- **Options:** how many monsters and bots, how many pickups, and which
+  weapons, buffs and hazards are in play.
+- **Controls:** jump and jetpack (W/Space), autofire that aims for you (F to
+  aim with the mouse), grenades (G or right-click). Crates hold a rifle,
   flamethrower, chainsaw, rockets, shield, speed, double jump, endless jet
   and double damage.
-- **The map:** lava, water currents, spikes and crumbling floors; walker,
-  flyer and turret monsters that respawn at random spots; a live minimap.
-- **AI bots:** add 0 to 8 with **- bots N +**. They fly, dodge lava and
-  shoot players, monsters and each other. Good for solo play and demos.
-- **Anywhere:** full screen on PC; on phones it goes full screen in
+- **The map:** lava, water currents, spikes and crumbling floors. Walker,
+  flyer and turret monsters respawn at random spots, and there's a live
+  minimap.
+- **Bots:** add 0 to 8. They fly, dodge lava and shoot players, monsters and
+  each other.
+- **Anywhere:** full screen on a PC. On a phone it goes full screen in
   landscape with touch controls.
 
-**How the multiplayer works.** Vercel functions can't hold websockets, so
-rooms run on a **Supabase Realtime** channel per room: broadcast for game
-traffic and presence for the roster. Each client simulates its own player
-and sends its state 10 times a second; others draw it 150 ms behind,
-interpolated using the sender's clock. The player who gets hit decides the
-hit. The earliest joiner still playing runs the monsters and bots. A
-watchdog rebuilds the connection when it dies, including the silent kind.
-Without Supabase (or with `?local=1`) rooms fall back to `BroadcastChannel`
-between tabs of one browser, so the offline demo still has multiplayer.
-Details: [`docs/DECISIONS.md`](docs/DECISIONS.md) D18 to D21.
+### Survival
 
-## Survival (endless runner)
-
-`/survival` is a Subway Surfers-style runner drawn in marker ink. The page
-scrolls toward you and never ends.
-
-- **Controls:** Space, ↑ or W to jump (hold for a higher jump), ↓ or S to
-  slide (in the air it slams you down), P or Esc to pause, R to restart.
-  On a phone: tap or swipe up to jump, swipe down to slide, in landscape
-  full screen.
+- **Controls:** Space, ↑ or W to jump (hold for a higher jump). ↓ or S to
+  slide (in the air it slams you down). P or Esc to pause, R to restart.
+  On a phone: tap or swipe up to jump, swipe down to slide.
 - **The track:** gaps, spikes, lava, crumbling floors, hanging beams you
-  slide under, floating ledges, and mobs that walk at you, fly at head
-  height or spit ink blots (high ones to slide under, low ones to jump).
-  Land on a mob to stomp it.
-- **HP:** 100 points. Hits cost 15 to 30 and give a short flashing
-  invulnerability. Falling into a gap costs 25 and puts you back on the
-  next ground.
-- **Pickups:** coins, hearts (+30 HP), a shield that eats one hit, a coin
+  slide under, and floating ledges. Mobs walk at you, fly at head height or
+  spit ink blots. Land on a mob to stomp it.
+- **HP:** 100 points. A hit costs 15 to 30 HP and makes you briefly
+  invulnerable. Falling into a gap costs 25 HP and puts you back on the next
+  ground.
+- **Pickups:** coins, hearts (+30 HP), a shield that blocks one hit, a coin
   magnet, and a zoom boost that flies you over everything for 4 s.
-- **Ramp:** speed eases from 380 to 820 px/s over three and a half
-  minutes, and the obstacle mix gets denser and meaner.
-- **Score:** metres + 5 per coin + 25 per stomp. The best run is kept in
-  `localStorage` and marked on the track as "your best".
-
-Chunks are data too (`src/lib/survival/schema.ts`): ground pieces, ledges,
-hazards, beams, mobs and pickups. `finalizeChunk` clamps every number for
-the current speed: gaps and hazards stay within a comfortable jump, there is
-landing room between dangers, hazards sit on solid ground and chunk seams
-are always plain ground. Chunks come from a seeded generator
-(`src/lib/survival/procedural.ts`), so a run needs no model, no network and
-no Supabase. `pnpm exec tsx scripts/check-survival.ts` checks 1,200 chunks
-against those rules.
-
-## Gemma's jobs
-
-1. **Eye.** It labels every numbered mark on the page with open vocabulary
-   (`what: "cactus"`, `role: "hazard"`).
-2. **Rules lawyer.** It reads handwriting in the margin and maps it onto a
-   **whitelisted** set of mechanics (gravity, speed, jump power, time limit,
-   boss, night mode, mirror controls…). Rules are data, never code, and every
-   number is clamped on the server.
-3. **Game designer.** It names the level, writes a two-line story, gives each
-   enemy a personality, rates difficulty and leaves a designer's note.
-4. **Critic.** When you win or die, it reviews your run with a kind roast and
-   1–5 stars.
-5. **Arena designer.** It lays out multiplayer maps (platforms, hazards,
-   spawns, crates, monsters) from a theme or a drawing, as whitelisted data
-   that the server clamps.
+- **Score:** metres + 5 per coin + 25 per stomp. Your best run is saved in
+  your browser and marked on the track.
 
 ## How it works
 
@@ -158,7 +126,7 @@ against those rules.
  └─────────────────────────────────────────────────────────────────────┘
           │  clean image + numbered image + mark geometry
           ▼
- POST /api/parse ──► Gemma 4 (Gemini API  |  Ollama, offline)
+ POST /api/parse ──► vision model (Gemini API  |  Ollama, offline)
           │            JSON → Zod validation → clamp → one retry
           ▼
  auto-fixer: ensure player + goal, nudge out of hazards,
@@ -170,73 +138,83 @@ against those rules.
  enemies / coins / goal are cut out of the drawing and come alive
           │  run stats
           ▼
- POST /api/review ──► Gemma's verdict (canned fallback if the model is busy)
+ POST /api/review ──► short review (canned fallback if the model is busy)
 ```
 
+**What the model does.** It labels every numbered mark with open vocabulary
+(`what: "cactus"`, `role: "hazard"`). It maps margin handwriting onto a
+**whitelisted** set of mechanics. It names the level, writes a two-line
+story and reviews your run. In the arena it lays out maps. Everything it
+returns is data that the server validates and clamps.
+
 **Set-of-marks prompting.** Vision models are bad at giving coordinates but
-good at reading numbers, so OpenCV does the geometry and Gemma only has to say
-"mark #3 is a cactus". We send two images: the clean drawing (to recognise
-things) and the numbered copy (to match ids). In testing this fixed cacti
-being read as "pillar platforms".
+good at reading numbers. So OpenCV handles the geometry, and the model only
+has to say "mark #3 is a cactus". It gets two images: the clean drawing
+(to recognise things) and the numbered copy (to match ids).
 
-**Golden rule.** Draw → parse → play → review works with **no database at
-all**. Supabase only powers the gallery, and every call to it is
-best-effort with a timeout.
+**Measurements over guesses.** Where the model wavers (a hatched trampoline
+vs spikes), the vision step measures the shape and settles it (D12 in
+[`docs/DECISIONS.md`](docs/DECISIONS.md)).
 
-## Measured latency (real numbers)
+**Multiplayer.** Each room is one **Supabase Realtime** channel. Broadcast
+carries game traffic and presence carries the roster. Each client simulates
+its own player and sends its state 10 times a second. Other clients draw it
+150 ms behind, interpolated. The player who gets hit decides the hit, and
+the earliest joiner still playing runs the monsters and bots. Without
+Supabase (or with `?local=1`), rooms fall back to `BroadcastChannel`
+between tabs of one browser. Details: D18 to D21 in
+[`docs/DECISIONS.md`](docs/DECISIONS.md).
 
-| Provider | Model | Parse | Notes |
-|---|---|---|---|
-| Gemini API | `gemma-4-26b-a4b-it` | ≈ 11 s typical (10–31 s range); 20–26 s in the browser | thinking `MINIMAL`, native system instruction, 2 images. Correct player/goal/hazard/enemy/rules on all 5 samples |
-| Ollama (laptop, RTX 4060) | `gemma4:e4b` | 15–16 s, up to ≈ 44 s when a malformed reply is retried | fully offline; player, goal and rules right on all 5 samples |
+**Survival** chunks come from a seeded generator and are clamped like
+levels (`src/lib/survival/`), so a run needs no model and no network.
 
-Setting thinking to `MINIMAL` made calls 2–3× faster with no accuracy loss.
-Details are in [`docs/DECISIONS.md`](docs/DECISIONS.md).
+**No database required.** Draw → parse → play → review works without
+Supabase. Supabase only powers the gallery and online arena rooms, and
+every call to it is best-effort with a timeout.
 
-**Measurements over guesses.** Where Gemma wavered (a hatched trampoline vs
-spikes), the vision step measures the shape: a mark whose top edge swings
-fully up and down again and again is tagged `zigzag` in the prompt, and a
-"spikes" label on a flat bar that isn't a zigzag becomes a trampoline. That
-took the trampoline to 3/3 without breaking real spikes (D12).
-
-## Run it
+## Run your own copy
 
 Requires Node 20+ and **pnpm**.
 
 ```bash
+git clone https://github.com/dhananjay-123/inkplay.git
+cd inkplay
 pnpm install
 cp .env.example .env.local   # then fill in the values below
 pnpm dev                     # http://localhost:3000
 ```
 
-### Cloud (Gemini API)
+### Hosted model (Gemini API)
 
 ```env
 MODEL_PROVIDER=gemini
 GEMINI_API_KEY=...            # https://aistudio.google.com/apikey
-GEMMA_CLOUD_MODEL=gemma-4-26b-a4b-it
+CLOUD_MODEL=gemma-4-26b-a4b-it
 ```
 
-### Offline (Ollama)
+### Local model, fully offline (Ollama)
 
 ```bash
-ollama pull gemma4:e4b
-pnpm build      # while online (fonts are fetched and self-hosted at build time)
-pnpm demo       # = MODEL_PROVIDER=ollama next start
+ollama pull gemma4:e4b        # or set OLLAMA_MODEL to another vision model
+pnpm build                    # while online: fonts are fetched and self-hosted at build time
+pnpm start:offline            # = MODEL_PROVIDER=ollama next start
 ```
 
-### Offline checklist
+Fonts, OpenCV.js and the sample drawings ship with the app, and sounds are
+synthesized with Web Audio. Nothing is fetched from a CDN at runtime. Check
+`/api/health` for `"modelReachable":true`.
 
-- [ ] `ollama list` shows `gemma4:e4b`, and `ollama serve` is running
-- [ ] `pnpm build` was run **while online**
-- [ ] Wi-Fi off → `pnpm demo` → `/api/health` shows `"provider":"ollama"` and `"modelReachable":true`
-- [ ] Try a sample on `/create` → play → the end card shows a verdict
-- [ ] The gallery says "The gallery is offline. The game isn't." (expected)
+### Tested models
 
-Fonts, OpenCV.js and sample drawings ship in `/public` or the bundle, and
-sounds are synthesized with Web Audio. Nothing is fetched from a CDN at runtime.
+| Provider | Model | Parse time |
+|---|---|---|
+| Gemini API | `gemma-4-26b-a4b-it` | ≈ 11 s typical (10–31 s), thinking `minimal` |
+| Ollama (RTX 4060 laptop) | `gemma4:e4b` | 15–16 s |
 
-### Gallery (optional, Supabase)
+Other vision models should work but haven't been tested. If you try one,
+please open an issue or PR with the results.
+
+### Gallery and online arena rooms (optional, Supabase)
 
 1. Create a Supabase project and run [`supabase/schema.sql`](supabase/schema.sql)
    in the SQL editor. It creates the tables, RLS policies, the `record_run`
@@ -245,16 +223,14 @@ sounds are synthesized with Web Audio. Nothing is fetched from a CDN at runtime.
    `SUPABASE_SERVICE_ROLE_KEY`. The service-role key is only used in
    `server-only` modules.
 
-Without these variables the app works fully; only the gallery is hidden.
-The arena then plays between tabs of one browser instead of over Realtime.
-Rooms need no tables: they use Realtime broadcast and presence with the
-anon key. Anonymous sign-in is used if you enable it in Supabase
-(Authentication), otherwise players are guests.
+Arena rooms need no tables. They use Realtime broadcast and presence with
+the anon key. If you enable anonymous sign-in in Supabase, it's used;
+otherwise players join as guests.
 
 ### No model at all
 
-`MODEL_PROVIDER=mock` uses a geometry-only labeller. It's for development
-only, never for demos.
+`MODEL_PROVIDER=mock` uses a geometry-only labeller. It's useful for
+working on the UI without an API key.
 
 ## Commands
 
@@ -262,49 +238,38 @@ only, never for demos.
 |---|---|
 | `pnpm dev` | dev server |
 | `pnpm build` / `pnpm start` | production build / serve |
-| `pnpm demo` | production server with `MODEL_PROVIDER=ollama` |
+| `pnpm start:offline` | production server with `MODEL_PROVIDER=ollama` |
+| `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm test:model` | smoke-test the configured provider on a sample |
 | `pnpm test:vision [files…]` | headless OpenCV run on the samples (or given JPEGs) → `.out/` |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test:arena [theme]` | Gemma designs one arena map |
+| `pnpm test:arena [theme]` | generate one arena map |
 | `pnpm test:realtime` | two Realtime clients + anonymous sign-in check |
-| `pnpm exec tsx scripts/arena-bot.ts ROOM [secs] [bots]` | headless players join a room and report message rate and longest gap per player |
-| `pnpm exec tsx scripts/check-survival.ts` | generates survival chunks across seeds and speeds and checks gaps and seams |
-
-## Drawing tips
-
-| Mark | Meaning |
-|---|---|
-| straight line | ground / platform |
-| zigzag | spikes |
-| **P** | player |
-| **G** or ★ | goal |
-| **$** | coin |
-| **E** (+ arrow) | enemy (+ direction) |
-| anything else | Gemma works it out |
-| words | rules |
-
-Use a dark pen on plain or lightly ruled paper, and keep the whole page in
-the photo. The full illustrated guide is at `/guide`.
+| `pnpm exec tsx scripts/arena-bot.ts ROOM [secs] [bots]` | headless players join a room and report sync stats |
+| `pnpm exec tsx scripts/check-survival.ts` | checks generated survival chunks for fair gaps and seams |
 
 ## Safety
 
 - The model can only choose from the `Rule` union in
-  [`src/lib/schema.ts`](src/lib/schema.ts). Unknown rules are dropped and every
-  number is clamped on the server.
-- Arena maps are data too: platforms, hazards, spawns, crates and monsters
-  from a whitelist, clamped and cleaned up on the server (no overlaps,
-  reachable hazards, spawns off hazards), and re-validated when a map
-  arrives from another player.
-- Server keys never reach the client. Per-IP rate limiting is on
-  `/api/parse`, `/api/review` and `/api/arena/map`, and 429s show a
-  friendly retry message.
+  [`src/lib/schema.ts`](src/lib/schema.ts). Unknown rules are dropped, and
+  every number is clamped on the server.
+- Arena maps and survival chunks are data too. They come from a whitelist,
+  get clamped and cleaned up, and are validated again when a map arrives
+  from another player.
+- Server keys never reach the client. `/api/parse`, `/api/review` and
+  `/api/arena/map` are rate-limited per IP.
+
+## Contributing
+
+Issues and pull requests are welcome. Please use **pnpm**, keep TypeScript
+strict, and run `pnpm build` before opening a PR. Design notes are in
+[`docs/SPEC.md`](docs/SPEC.md), and the reasoning behind non-obvious choices
+is in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Stack
 
 Next.js 16 (App Router) · TypeScript strict · Tailwind v4 · Phaser 3 ·
 OpenCV.js (Web Worker) · Zod · Zustand · `@google/genai` · Ollama ·
-Supabase (optional: gallery + Realtime rooms) · Rough.js.
+Supabase (optional) · Rough.js.
 
 ## License
 

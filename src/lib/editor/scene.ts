@@ -4,7 +4,7 @@ import { STICKER_BY_ID, stickerSize } from './stickers';
 /**
  * A level drawn in the browser. Everything lives in level space (1600 × 900,
  * the same size as the sample sheets) and exports to a plain ink-on-paper
- * PNG, which then takes the normal photo route: OpenCV, set-of-marks, Gemma.
+ * PNG, which then takes the normal photo route: OpenCV, set-of-marks, the model.
  */
 
 export const W = 1600;

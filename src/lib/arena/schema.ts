@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * Multiplayer arena maps. Like platformer levels, maps are data, never code:
- * Gemma may only emit platforms, spawns, pickups and whitelisted rules, and
+ * The model may only emit platforms, spawns, pickups and whitelisted rules, and
  * everything is clamped here (shared by the server route and the client, so a
  * map received over the wire is re-validated before it is played).
  */
@@ -41,7 +41,7 @@ export const ENEMY_KINDS = ['walker', 'flyer', 'turret'] as const;
 export type EnemyKind = (typeof ENEMY_KINDS)[number];
 export const MAX_ENEMIES = 8;
 
-/** What the map maker asks for. Gemma gets it as constraints; applyOptions enforces it. */
+/** What the map maker asks for. The model gets it as constraints; applyOptions enforces it. */
 export const MAX_BOTS = 8;
 
 export const MapOptionsSchema = z.object({
@@ -135,7 +135,7 @@ function toEnemy(raw: unknown): Enemy | null {
   return { ...pt, kind };
 }
 
-/** The bits of a map Gemma can add (theme mode, or "extras" around a drawing). */
+/** The bits of a map the model can add (theme mode, or "extras" around a drawing). */
 const PieceArrays = {
   platforms: z.array(z.unknown()).catch([]),
   hazards: z.array(z.unknown()).catch([]),
@@ -201,7 +201,7 @@ export type DraftArena = {
   rules: ArenaRule[];
 };
 
-/** What Gemma returns when designing a map from a theme (or nothing). */
+/** What the model returns when designing a map from a theme (or nothing). */
 export const ArenaFromModel = z
   .object({
     title: z.unknown(),
@@ -218,7 +218,7 @@ export const ArenaFromModel = z
   }))
   .refine((d) => d.platforms.length >= 3, { message: 'platforms must contain at least 3 valid {x,y,w,h} rects', path: ['platforms'] });
 
-/** Gemma's answer when it turns a drawing's numbered marks into an arena. */
+/** The model's answer when it turns a drawing's numbered marks into an arena. */
 export const ARENA_ROLES = ['platform', 'crumble', 'spikes', 'lava', 'water', 'enemy', 'spawn', 'health', 'ammo', 'weapon', 'buff', 'decoration'] as const;
 export const ArenaLabelsFromModel = z
   .object({
@@ -441,7 +441,7 @@ function separate(platforms: Platform[]): Platform[] {
 }
 
 /**
- * A hazard nobody can touch is pointless (Gemma put lava *under* the floor).
+ * A hazard nobody can touch is pointless (the model put lava *under* the floor).
  * Lava and spikes rest on the surface below them; then anything a solid
  * platform covers (no head-room for a player above it) is lifted on top.
  */

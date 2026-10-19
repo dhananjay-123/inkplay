@@ -5,7 +5,7 @@ import { Magnetic } from '@/components/magnetic';
 import { SiteNav } from '@/components/site-nav';
 import './globals.css';
 
-// next/font downloads at build time and self-hosts, so the offline demo works.
+// next/font downloads at build time and self-hosts, so offline mode works.
 const bricolage = Bricolage_Grotesque({ variable: '--font-bricolage', subsets: ['latin'], display: 'swap' });
 const kalam = Kalam({ variable: '--font-kalam', weight: ['300', '400', '700'], subsets: ['latin', 'devanagari'], display: 'swap' });
 const jetbrains = JetBrains_Mono({ variable: '--font-jetbrains', subsets: ['latin'], display: 'swap' });
@@ -13,7 +13,7 @@ const jetbrains = JetBrains_Mono({ variable: '--font-jetbrains', subsets: ['lati
 export const metadata: Metadata = {
   title: { default: 'INKPLAY · Draw it. Write the rules. Play it.', template: '%s · INKPLAY' },
   description:
-    'Draw a level on paper, write the rules in plain words, snap a photo. Gemma 4 turns it into a platformer you can play, in the cloud or fully offline, plus a multiplayer arena on maps Gemma designs.',
+    'Draw a level on paper, write the rules in plain words, snap a photo. INKPLAY turns it into a platformer you can play, plus an endless runner and a multiplayer jetpack arena. Free and open source.',
 };
 
 export const viewport: Viewport = {

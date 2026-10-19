@@ -181,7 +181,7 @@ export class LevelScene extends Phaser.Scene {
       if (!this.textures.exists(key)) this.textures.addCanvas(key, drawRescuePlatform(w, h));
       this.add.image(r.bbox.x * WORLD.width - 4, r.bbox.y * WORLD.height - 4, key).setOrigin(0).setDepth(1);
       this.add
-        .text(r.bbox.x * WORLD.width + w / 2, r.bbox.y * WORLD.height + h + 6, 'added by Gemma ✦', {
+        .text(r.bbox.x * WORLD.width + w / 2, r.bbox.y * WORLD.height + h + 6, 'auto-added ✦', {
           fontFamily: this.cfg.handFont, fontSize: '16px', color: PALETTE.graphite,
         })
         .setOrigin(0.5, 0)

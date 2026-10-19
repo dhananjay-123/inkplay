@@ -5,7 +5,7 @@ import type { Level, Mark, MarkLabel } from '@/lib/schema';
  *
  * Dev/test only: lets the draw → play loop run without credentials. It cannot
  * read words or recognise doodles, and the UI labels it as "mock" so it is
- * never mistaken for Gemma.
+ * never mistaken for a real model.
  */
 export function mockLevel(marks: Mark[]): Level {
   const labels: MarkLabel[] = [];
@@ -32,6 +32,6 @@ export function mockLevel(marks: Mark[]): Level {
     labels,
     rules: [],
     rawRuleText: [],
-    designerNote: 'Mock provider: connect Gemma to read words and doodles.',
+    designerNote: 'Mock provider: connect a model to read words and doodles.',
   };
 }

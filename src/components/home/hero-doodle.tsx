@@ -28,7 +28,7 @@ export function HeroDoodle() {
         {/* dotted jump arc */}
         <path className="hd-arc" strokeWidth="2.5" strokeDasharray="2 9" stroke="var(--graphite)" d="M84 170 C 180 40, 300 40, 396 150" />
       </svg>
-      <figcaption className="font-hand absolute right-0 -bottom-3 text-base text-graphite">fig. 1, before Gemma reads it</figcaption>
+      <figcaption className="font-hand absolute right-0 -bottom-3 text-base text-graphite">fig. 1, before it gets read</figcaption>
     </figure>
   );
 }

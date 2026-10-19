@@ -57,11 +57,11 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof AIError) {
       console.warn(`[parse] ${e.code}: ${e.message}${e.detail ? ` — ${e.detail.slice(0, 300)}` : ''}`);
-      if (e.code === 'rate_limited') return err(429, e.code, 'Gemma is catching its breath. Try again in a moment.', 20);
-      if (e.code === 'timeout') return err(504, e.code, 'Gemma stared at your drawing for too long. Try again?');
-      if (e.code === 'bad_output') return err(502, e.code, 'Gemma doodled outside the lines. Try again?');
-      if (e.code === 'misconfigured') return err(503, e.code, 'Gemma isn’t plugged in on this server yet.');
-      return err(503, e.code, 'Gemma is out of the room right now. Try again soon.');
+      if (e.code === 'rate_limited') return err(429, e.code, 'Too many drawings at once. Try again in a moment.', 20);
+      if (e.code === 'timeout') return err(504, e.code, 'Reading your drawing took too long. Try again?');
+      if (e.code === 'bad_output') return err(502, e.code, 'The reader doodled outside the lines. Try again?');
+      if (e.code === 'misconfigured') return err(503, e.code, 'The drawing reader isn’t set up on this server yet.');
+      return err(503, e.code, 'The drawing reader is out of the room right now. Try again soon.');
     }
     console.error('[parse] unexpected', e);
     return err(500, 'internal', 'Something smudged. Try again?');

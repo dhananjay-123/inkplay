@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * "Rules are data", made touchable: a tiny level where the hero runs on its
  * own; flip handwritten rules and the physics change live, with the exact
- * JSON rule Gemma would emit shown alongside.
+ * JSON rule the model would emit shown alongside.
  */
 
 type RuleId = 'low' | 'heavy' | 'speed' | 'upside' | 'night' | 'mirror';
@@ -179,7 +179,7 @@ export function RulesPlayground() {
           })}
         </ul>
         <div className="sketch-soft mt-6 min-h-[7rem] p-4 font-mono text-xs leading-6">
-          <p className="font-hand text-base text-graphite">what Gemma sends the game:</p>
+          <p className="font-hand text-base text-graphite">what the game receives:</p>
           <pre className="mt-1 overflow-x-auto whitespace-pre text-ink">
             {active.length ? `"rules": [\n${active.map((r) => `  ${r.json}`).join(',\n')}\n]` : '"rules": []'}
           </pre>

@@ -28,9 +28,9 @@ const ROLE_CHIP: Record<(typeof MEANING)[number]['role'], string> = {
 };
 
 const STEPS = [
-  { icon: 'draw', t: 'Draw', tilt: -2, tape: '', d: 'Any paper, one dark pen. A line is ground, a zigzag is spikes, P is you. Gemma works out the rest.' },
-  { icon: 'snap', t: 'Snap', tilt: 1.5, tape: 'tape-pink', d: 'Upload a photo of the page, or skip the paper and draw it on the canvas here. OpenCV numbers every mark so Gemma can point at them.' },
-  { icon: 'play', t: 'Play', tilt: -1, tape: 'tape-blue', d: 'Your own ink is the level. The dog you drew walks, the coins you drew vanish, and Gemma reviews your run at the end.' },
+  { icon: 'draw', t: 'Draw', tilt: -2, tape: '', d: 'Any paper, one dark pen. A line is ground, a zigzag is spikes, P is you. The AI works out the rest.' },
+  { icon: 'snap', t: 'Snap', tilt: 1.5, tape: 'tape-pink', d: 'Upload a photo of the page, or skip the paper and draw it on the canvas here. Every mark gets a number so the AI can point at it.' },
+  { icon: 'play', t: 'Play', tilt: -1, tape: 'tape-blue', d: 'Your own ink is the level. The dog you drew walks, the coins you drew vanish, and you get a review of your run at the end.' },
 ] as const;
 
 /* Each letter of the wordmark is stuck on slightly crooked. */
@@ -64,7 +64,7 @@ export default function Home() {
             Draw it. <span className="highlight">Write the rules.</span> Play it.
           </p>
           <p className="mt-4 max-w-md text-lg text-graphite">
-            Draw a level on paper, scribble a few rules in the corner and take a photo. Gemma 4 reads what you meant, and about fifteen seconds
+            Draw a level on paper, scribble a few rules in the corner and take a photo. INKPLAY reads what you meant, and about fifteen seconds
             later you&apos;re playing it.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-5">
@@ -100,7 +100,7 @@ export default function Home() {
               </span>
             </h2>
             <p className="mt-5 max-w-2xl text-lg text-graphite">
-              Most draw-your-own-game apps make you learn a colour code first. Here you just draw the thing, and Gemma decides what it does.
+              Most draw-your-own-game apps make you learn a colour code first. Here you just draw the thing, and the game works out what it does.
             </p>
           </Reveal>
           <div className="mt-14 grid gap-10 md:grid-cols-[1fr_1.8fr] md:items-start">
@@ -149,8 +149,8 @@ export default function Home() {
           </h2>
           <MarginNote className="mt-3">try “heavy gravity”, then watch the spikes</MarginNote>
           <p className="mt-4 max-w-2xl text-lg text-graphite">
-            Gemma turns your handwriting into game mechanics. It can only pick from a fixed list of rule types, and the server clamps every
-            number, so the rules stay data and never become code.
+            Your handwriting becomes game mechanics. Write it however you like: low gravity, double jump, the floor is lava. If a rule
+            isn&apos;t one the game knows, it&apos;s skipped instead of breaking your level.
           </p>
         </Reveal>
         <Reveal className="mt-12">
@@ -183,27 +183,28 @@ export default function Home() {
         <TornEdge side="bottom" />
       </section>
 
-      {/* ------------------------------------------------------------ offline */}
+      {/* ------------------------------------------------------- open source */}
       <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-24 sm:px-8 md:grid-cols-2">
         <Reveal>
           <h2 className="font-display text-4xl font-extrabold tracking-tight sm:text-6xl">
-            Works with the <span className="highlight">Wi-Fi off.</span>
+            Free, open, <span className="highlight">yours.</span>
           </h2>
           <p className="mt-4 text-lg text-graphite">
-            The same open Gemma 4 family runs this site in the cloud and runs on a laptop through Ollama. Fonts, OpenCV, the samples and the
-            sounds all ship with the app. Only the gallery and online arena rooms need a database. The game never does, and offline the
-            arena still plays between browser tabs.
+            No account, no ads, nothing to install. INKPLAY is open source, so you can also run your own copy, even on a laptop with the
+            Wi-Fi off using a local model. Fonts, the samples and the sounds all ship with the app.
           </p>
         </Reveal>
         <Reveal className="justify-self-center md:justify-self-end">
           <div className="tape relative w-full max-w-sm rotate-[2deg] bg-sun p-6 pt-8 shadow-[var(--shadow)] [border-radius:2px_2px_18px_2px]">
-            <p className="font-hand text-xl">offline stage demo</p>
+            <p className="font-hand text-xl">run it yourself</p>
             <ol className="mt-3 space-y-1.5 font-mono text-sm">
-              <li>1. ollama pull gemma4:e4b</li>
-              <li>2. pnpm build</li>
-              <li>3. pnpm demo</li>
+              <li>1. git clone the repo</li>
+              <li>2. pnpm install &amp;&amp; pnpm build</li>
+              <li>3. pnpm start</li>
             </ol>
-            <p className="font-hand mt-4 text-lg">then turn the Wi-Fi off and draw something.</p>
+            <a href="https://github.com/dhananjay-123/inkplay" className="font-hand link-scrawl mt-4 inline-block text-lg text-ink">
+              setup guide on GitHub
+            </a>
           </div>
         </Reveal>
       </section>
@@ -217,7 +218,7 @@ export default function Home() {
               Bring friends. <span className="highlight">Bring jetpacks.</span>
             </h2>
             <p className="mt-4 max-w-xl text-lg text-graphite">
-              Ink Arena is a multiplayer shooter on a map Gemma designs from a theme or from your drawing. Share a room code and everyone plays
+              Ink Arena is a multiplayer shooter on a map designed from a theme or from your drawing. Share a room code and everyone plays
               the same map live. Autofire aims for you, crates hold rockets and chainsaws, and bots fill the room when your friends are busy.
             </p>
             <Link href="/arena" className="btn-game mt-8 px-6 py-3.5 text-lg">
@@ -243,7 +244,10 @@ export default function Home() {
       <footer className="mt-auto border-t-2 border-dashed border-ink/15">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-8 sm:px-8">
           <p className="font-hand text-lg text-graphite">
-            INKPLAY is MIT licensed. Made with Gemma 4 for Hacktoberfest Hack Day Gwalior.
+            INKPLAY is free and open source (MIT).{' '}
+            <a href="https://github.com/dhananjay-123/inkplay" className="link-scrawl text-ink">
+              Source on GitHub
+            </a>
           </p>
           <Link href="/about" className="font-hand link-scrawl text-lg text-ink">
             how it works

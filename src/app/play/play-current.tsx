@@ -16,7 +16,7 @@ export function PlayCurrent() {
     return (
       <section className="mx-auto w-full max-w-3xl px-4 py-24 text-center">
         <h1 className="font-display text-5xl font-extrabold tracking-tight">Nothing on the page yet.</h1>
-        <p className="font-hand mt-4 text-2xl text-graphite">Draw something first. Gemma is ready with a red pen.</p>
+        <p className="font-hand mt-4 text-2xl text-graphite">Draw something first. The page is waiting.</p>
         <Link href="/create" className="label mt-8 btn-game px-6 py-4">
           Start drawing →
         </Link>

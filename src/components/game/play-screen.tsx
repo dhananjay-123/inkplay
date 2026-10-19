@@ -189,7 +189,7 @@ function EndCard({ stats, totalCoins, review, onAgain, hasId }: { stats: RunStat
               <p className="font-hand mt-2 text-xl leading-snug">{review.verdict}</p>
             </>
           ) : (
-            <p className="font-hand animate-pulse text-xl text-graphite">Gemma is writing a review…</p>
+            <p className="font-hand animate-pulse text-xl text-graphite">Writing your review…</p>
           )}
         </div>
         <div className="mt-6 flex flex-wrap gap-3">

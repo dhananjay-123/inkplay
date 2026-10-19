@@ -132,7 +132,7 @@ export function ArenaClient() {
         Ink <span className="highlight">Arena</span>
       </h1>
       <p className="mt-4 max-w-xl text-lg text-graphite">
-        Jetpacks, auto-aim autofire and a map Gemma designs for you, from a theme or from a drawing. Share the room code and everyone plays the same map live.
+        Jetpacks, auto-aim autofire and a map designed for you, from a theme or from a drawing. Share the room code and everyone plays the same map live.
       </p>
 
       <form
@@ -613,7 +613,7 @@ function MapMaker({ onMap, onClose }: { onMap: (m: ArenaMap, extra: Pick<Current
       const p = await processImage(source);
       if (p.marks.length === 0) throw new Error('No ink found on that page.');
       const backdrop = await shrinkJpeg(p.cleanFull, 800, 0.55);
-      await ask({ mode: 'drawing', marks: p.marks, cleanImage: p.cleanSend, somImage: p.somSend, options: opts }, 'Gemma is turning your drawing into an arena… (about 30 s)', backdrop);
+      await ask({ mode: 'drawing', marks: p.marks, cleanImage: p.cleanSend, somImage: p.somSend, options: opts }, 'Turning your drawing into an arena… (about 30 s)', backdrop);
     } catch (e) {
       setSt({ busy: null, error: e instanceof Error ? e.message : String(e) });
     }
@@ -656,10 +656,10 @@ function MapMaker({ onMap, onClose }: { onMap: (m: ArenaMap, extra: Pick<Current
               className="sketch grid gap-3 p-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                void ask({ mode: 'theme', theme: theme.trim() || undefined, options: opts }, 'Gemma is sketching an arena… (about 30 s)');
+                void ask({ mode: 'theme', theme: theme.trim() || undefined, options: opts }, 'Sketching an arena… (about 30 s)');
               }}
             >
-              <span className="font-hand text-xl">Gemma, by itself</span>
+              <span className="font-hand text-xl">Surprise me</span>
               <div className="flex flex-wrap gap-2">
                 <input
                   value={theme}

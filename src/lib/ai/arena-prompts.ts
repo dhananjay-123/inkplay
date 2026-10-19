@@ -15,7 +15,7 @@ const PIECES = `"platforms": [ { "x": number, "y": number, "w": number, "h": num
   "spawns": [ { "x": number, "y": number } ],                 // y = top of the platform under it
   "pickups": [ { "x": number, "y": number, "kind": "health" | "ammo" | "rifle" | "flamethrower" | "chainsaw" | "rockets" | "grenades" | "shield" | "speed" | "double_jump" | "jetfuel" | "damage" } ]`;
 
-/** The map maker's choices, in words Gemma can follow. */
+/** The map maker's choices, in words the model can follow. */
 export function optionsText(o: MapOptions): string {
   const on = (b: boolean, what: string) => (b ? what : `NO ${what}`);
   const pickups = { few: '4-6', normal: '8-10', lots: '12-14' }[o.pickups];

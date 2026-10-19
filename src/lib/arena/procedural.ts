@@ -4,7 +4,7 @@ import { ARENA_ROLES, BUFF_PICKUPS, DEFAULT_OPTIONS, WEAPON_PICKUPS, applyOption
 const TITLES = ['Margin Mayhem', 'Graph Paper Gulag', 'Staple Fortress', 'Eraser Ridge', 'Notebook Nightmare', 'Hostel Rooftops'];
 
 /**
- * Seeded map with no model: used when Gemma is unavailable or slow, and by
+ * Seeded map with no model: used when the model is unavailable or slow, and by
  * MODEL_PROVIDER=mock. Mirrored left/right so neither side is favoured, with
  * a lava pit, a flowing stream, crumbling ledges and weapon/buff crates.
  */
@@ -51,7 +51,7 @@ export function proceduralDraft(seed: number): DraftArena {
   const rules: ArenaRule[] = r() < 0.3 ? [{ kind: 'gravity', value: 0.7 }] : [];
   return {
     title: TITLES[Math.floor(r() * TITLES.length)],
-    story: 'Gemma was busy, so the ruler drew this one. Still pointy.',
+    story: 'The map maker was busy, so the ruler drew this one. Still pointy.',
     platforms,
     hazards,
     enemies: [
@@ -71,7 +71,7 @@ type Pieces = Pick<DraftArena, 'platforms' | 'hazards' | 'enemies' | 'spawns' | 
 
 /**
  * Drawing → arena: measured zigzags are always spikes (measurement beats a
- * guess, like D12), Gemma's extras are added, then the drawing is grown to
+ * guess, like D12), the model's extras are added, then the drawing is grown to
  * fill the page and the map maker's options are enforced.
  */
 export function arenaFromDrawing(

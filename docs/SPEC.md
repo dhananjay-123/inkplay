@@ -8,10 +8,11 @@ Source of truth for *what* we build. `CLAUDE.md` covers *how* we work;
 ## 1. Product
 
 **One-liner.** Draw a game level on any paper with any single pen, write the
-rules in plain words in the margin, snap a photo. Gemma 4 (open-weight)
+rules in plain words in the margin, snap a photo. A vision model
 understands what you *meant* and turns it into a playable platformer in
-seconds. The public site runs Gemma 4 in the cloud; the same app runs fully
-offline on a laptop with Gemma 4 E4B via Ollama.
+seconds. The public site uses a hosted model (Gemini API); a self-hosted
+copy can run fully offline with a local model via Ollama. Free, no
+account, open source (MIT).
 
 ### What's new vs prior apps
 
@@ -24,9 +25,9 @@ understands **meaning**:
 2. **Handwritten rules.** "low gravity", "enemies get faster",
    "coins = speed boost", "boss: angry mess uncle throws rotis" become
    mechanics.
-3. **AI game designer.** Gemma names the level, writes a 2-line story, gives
+3. **AI game designer.** The model names the level, writes a 2-line story, gives
    enemies personalities, rates difficulty and roasts your run.
-4. **Open + offline.** Same open model family in the cloud or on a laptop.
+4. **Open + offline.** Open source; self-hosted copies can use a local model.
 
 ### Drawing conventions (single pen; optional cheat sheet)
 
@@ -38,7 +39,7 @@ understands **meaning**:
 | **G** or ★ | goal |
 | **$** | coin |
 | **E** (+ arrow) | enemy (+ direction) |
-| anything else | interpreted by Gemma |
+| anything else | interpreted by the model |
 | words | rules |
 
 ---
@@ -55,7 +56,7 @@ understands **meaning**:
 | Vision | OpenCV.js in the browser, self-hosted, lazy-loaded on `/create` |
 | Client state | Zustand |
 | Validation | Zod |
-| AI (cloud) | `@google/genai`, model from `GEMMA_CLOUD_MODEL` |
+| AI (cloud) | `@google/genai`, model from `CLOUD_MODEL` |
 | AI (local) | Ollama `/api/chat`, model from `OLLAMA_MODEL` (default `gemma4:e4b`) |
 | Sketch rendering | Rough.js |
 | DB + storage | Supabase (gallery only, optional) |
@@ -66,9 +67,10 @@ understands **meaning**:
 
 ```
 # AI
-MODEL_PROVIDER=gemini            # gemini (Vercel) | ollama (laptop / offline)
+MODEL_PROVIDER=gemini            # gemini (hosted API) | ollama (local / offline) | mock
 GEMINI_API_KEY=                  # server-only
-GEMMA_CLOUD_MODEL=               # exact Gemma 4 model id from Google AI Studio
+CLOUD_MODEL=                     # exact model id from Google AI Studio
+MODEL_THINKING=minimal
 OLLAMA_URL=http://127.0.0.1:11434
 OLLAMA_MODEL=gemma4:e4b
 
@@ -114,13 +116,13 @@ NEXT_PUBLIC_INTRO_VIDEO=0
 - `src/lib/ai/index.ts` → `generateJSON<T>({ system, prompt, images, schema })`
   switching on `MODEL_PROVIDER`:
   - **gemini:** `models.generateContent`, inline base64 JPEG parts. Do **not**
-    assume system instructions or JSON mode for Gemma — system prompt goes at
+    assume system instructions or JSON mode for Gemma-family models — system prompt goes at
     the top of the user turn; parse defensively. Verified in Phase 1.
   - **ollama:** `/api/chat`, `stream:false`, system + user with `images`,
     `format` = JSON Schema from Zod, `temperature: 0.2`.
   - Both: strip fences → `JSON.parse` → Zod. Retry once with the validation
     error appended. Still failing → structured, playful error.
-  - Gemini 429 / quota → "Gemma is catching its breath, try again in a
+  - Gemini 429 / quota → "Too many drawings at once, try again in a
     moment" + retry button.
 - Run the fixer (3.5), return `{ id, level, marks }`.
 - Best-effort, non-blocking: if `hasSupabase`, upload `cleanImage` and insert
@@ -188,7 +190,7 @@ Clamp every number server-side. Drop labels whose `id` doesn't exist.
 - Player overlapping hazard → nudge up/left.
 - Reachability: coarse grid BFS using jump height/width from active rules;
   if unreachable, insert minimal rescue platforms (accent colour, label
-  "added by Gemma ✦") and append to `designerNote`.
+  "auto-added ✦") and append to `designerNote`.
 - Unknown / low-confidence → `decoration`.
 
 ---
@@ -223,7 +225,7 @@ Tokens and fonts: see `CLAUDE.md`.
 - Split-text mask reveals; magnetic buttons; card tilt; paper-curl gallery
   hover.
 - Ink-blot page transition (~700 ms).
-- Kalam margin annotations, as if Gemma comments on the site.
+- Kalam margin annotations, as if someone scribbled notes on the site.
 - Reduced motion: no trail, reveals → fades, skip intro.
 - 60 fps target; lazy OpenCV/Phaser; Lighthouse perf ≥ 85 on `/`.
 
@@ -257,7 +259,7 @@ motion and without JS. The original plan below is kept for reference.
    drag-in doodles, rules, imported pictures, undo, templates saved in the
    browser) or upload a photo; templates shelf; Try a sample (5);
    cheat sheet; set-of-marks reveal with labels typing in
-   ("#3 cactus → hazard"); witty loading lines; "Gemma read these rules";
+   ("#3 cactus → hazard"); witty loading lines; "Rules we read";
    "Play it →".
 3. **`/play`, `/play/[id]`** — full-bleed game + HUD; end card with verdict,
    stars, remix, back to gallery; share button only with `id`.
@@ -311,7 +313,7 @@ at a time, 5 s). Gemini free-tier limits are the real ceiling.
 ## 8. Deploy (Vercel)
 
 Public GitHub repo (MIT) → import in Vercel → set `MODEL_PROVIDER=gemini`,
-`GEMINI_API_KEY`, `GEMMA_CLOUD_MODEL`, Supabase vars. Deploy hello-world in
+`GEMINI_API_KEY`, `CLOUD_MODEL`, Supabase vars. Deploy hello-world in
 Phase 2. Check `/api/parse` latency against `maxDuration`.
 
 ---

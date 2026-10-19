@@ -1,4 +1,4 @@
-/** Smoke test: Gemma designs an arena from a theme (pnpm test:arena [theme]). */
+/** Smoke test: the model designs an arena from a theme (pnpm test:arena [theme]). */
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 

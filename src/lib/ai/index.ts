@@ -76,12 +76,12 @@ let thinkingUnsupported = false;
 
 async function callGemini(opts: GenerateOptions<unknown>, extra: string): Promise<string> {
   try {
-    return await callGeminiOnce(opts, extra, env.GEMMA_THINKING === 'minimal' && !thinkingUnsupported);
+    return await callGeminiOnce(opts, extra, env.MODEL_THINKING === 'minimal' && !thinkingUnsupported);
   } catch (e) {
     // Transient 5xx from the API: one quick retry if time allows.
     if (e instanceof AIError && e.code === 'unavailable' && (opts.timeoutMs ?? 55_000) > 15_000) {
       await new Promise((r) => setTimeout(r, 700));
-      return callGeminiOnce({ ...opts, timeoutMs: (opts.timeoutMs ?? 55_000) - 2_000 }, extra, env.GEMMA_THINKING === 'minimal' && !thinkingUnsupported);
+      return callGeminiOnce({ ...opts, timeoutMs: (opts.timeoutMs ?? 55_000) - 2_000 }, extra, env.MODEL_THINKING === 'minimal' && !thinkingUnsupported);
     }
     // Gemma 4 thinks for ~1k hidden tokens by default (20s+ per call); MINIMAL
     // removes that. Models without the knob answer 400 — retry without it.
@@ -94,8 +94,8 @@ async function callGemini(opts: GenerateOptions<unknown>, extra: string): Promis
 }
 
 async function callGeminiOnce(opts: GenerateOptions<unknown>, extra: string, minimalThinking: boolean): Promise<string> {
-  if (!env.GEMINI_API_KEY || !env.GEMMA_CLOUD_MODEL) {
-    throw new AIError('misconfigured', 'GEMINI_API_KEY and GEMMA_CLOUD_MODEL must be set for MODEL_PROVIDER=gemini');
+  if (!env.GEMINI_API_KEY || !env.CLOUD_MODEL) {
+    throw new AIError('misconfigured', 'GEMINI_API_KEY and CLOUD_MODEL must be set for MODEL_PROVIDER=gemini');
   }
   gemini ??= new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
   const native = opts.nativeSystemInstruction ?? true;
@@ -106,7 +106,7 @@ async function callGeminiOnce(opts: GenerateOptions<unknown>, extra: string, min
   ];
   try {
     const res = await gemini.models.generateContent({
-      model: env.GEMMA_CLOUD_MODEL,
+      model: env.CLOUD_MODEL,
       contents: [{ role: 'user', parts }],
       config: {
         temperature: opts.temperature ?? 0.2,
@@ -117,17 +117,17 @@ async function callGeminiOnce(opts: GenerateOptions<unknown>, extra: string, min
       },
     });
     const out = res.text;
-    if (!out) throw new AIError('bad_output', 'Gemma returned an empty response');
+    if (!out) throw new AIError('bad_output', 'The model returned an empty response');
     return out;
   } catch (e) {
     if (e instanceof AIError) throw e;
     if (e instanceof ApiError) {
-      if (e.status === 429) throw new AIError('rate_limited', 'Gemma is catching its breath', e.message);
-      if (e.status >= 500) throw new AIError('unavailable', 'Gemma is unavailable right now', e.message);
+      if (e.status === 429) throw new AIError('rate_limited', 'The model is catching its breath', e.message);
+      if (e.status >= 500) throw new AIError('unavailable', 'The model is unavailable right now', e.message);
       throw new AIError('misconfigured', `Gemini API error ${e.status}`, e.message);
     }
     if (e instanceof Error && (e.name === 'AbortError' || e.name === 'TimeoutError')) {
-      throw new AIError('timeout', 'Gemma took too long to answer');
+      throw new AIError('timeout', 'The model took too long to answer');
     }
     throw new AIError('unavailable', 'Could not reach the Gemini API', String(e));
   }
@@ -157,7 +157,7 @@ async function callOllama(opts: GenerateOptions<unknown>, extra: string): Promis
     });
   } catch (e) {
     if (e instanceof Error && (e.name === 'AbortError' || e.name === 'TimeoutError')) {
-      throw new AIError('timeout', 'Local Gemma took too long to answer');
+      throw new AIError('timeout', 'The local model took too long to answer');
     }
     throw new AIError('unavailable', `Ollama is not reachable at ${env.OLLAMA_URL}`, String(e));
   }
@@ -215,7 +215,7 @@ export async function generateJSON<T>(opts: GenerateOptions<T>): Promise<Generat
       `\n\nYour previous answer was invalid:\n${lastError.slice(0, 800)}\n` +
       'Reply again with ONLY the corrected JSON object. No prose, no code fences.';
   }
-  throw new AIError('bad_output', 'Gemma doodled outside the lines', lastError);
+  throw new AIError('bad_output', 'The model doodled outside the lines', lastError);
 }
 
 export async function checkModel(which: Provider = defaultProvider): Promise<{ reachable: boolean; detail?: string }> {
@@ -232,6 +232,6 @@ export async function checkModel(which: Provider = defaultProvider): Promise<{ r
     }
   }
   // Don't spend Gemini quota on health checks: config presence only.
-  if (!env.GEMINI_API_KEY || !env.GEMMA_CLOUD_MODEL) return { reachable: false, detail: 'gemini not configured' };
+  if (!env.GEMINI_API_KEY || !env.CLOUD_MODEL) return { reachable: false, detail: 'gemini not configured' };
   return { reachable: true };
 }

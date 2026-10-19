@@ -2,7 +2,7 @@
  * Ready-made doodles for the level editor (and the guide's picture cards).
  * Each one is plain SVG path data in its own little box, drawn in a single
  * ink, exactly like you would on paper, so the exported page goes through
- * the same OpenCV + Gemma pipeline as a photo.
+ * the same OpenCV + model pipeline as a photo.
  */
 
 export type StickerGroup = 'symbols' | 'things';

@@ -46,7 +46,7 @@ export function fixLevel(level: Level, marks: Mark[]): PlayableLevel {
     const ground: BBox = { x: 0.02, y: 0.93, w: 0.96, h: RESCUE_H };
     rescue.push({ bbox: ground });
     surfaces.push(surfaceOfBox(ground));
-    notes.push('No ground found, so Gemma drew some.');
+    notes.push('No ground found, so we drew some.');
   }
 
   // --- spawn
@@ -81,7 +81,7 @@ export function fixLevel(level: Level, marks: Mark[]): PlayableLevel {
     const end = s[s.length - 1];
     const x = Math.max(s[0][0], end[0] - 0.03);
     goal = { x, y: surfaceYAt(s, x) ?? end[1] };
-    notes.push('No finish line, so Gemma planted a flag.');
+    notes.push('No finish line, so we planted a flag.');
   }
 
   // --- ground under spawn (otherwise the hero falls forever)
@@ -104,7 +104,7 @@ export function fixLevel(level: Level, marks: Mark[]): PlayableLevel {
       surfaces.push(surfaceOfBox(step));
       added++;
     }
-    if (added > 0) notes.push(`Gemma added ${added} rescue platform${added > 1 ? 's' : ''} ✦ so the goal is reachable.`);
+    if (added > 0) notes.push(`Added ${added} rescue platform${added > 1 ? 's' : ''} ✦ so the goal is reachable.`);
   }
 
   const designerNote = [level.designerNote, ...notes].join(' ');

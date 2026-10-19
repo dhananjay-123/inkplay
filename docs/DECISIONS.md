@@ -30,7 +30,8 @@ decision, why.
 - **Context:** by default Gemma 4 spends ~1k hidden thought tokens per call
   (a one-line prompt took 21 s). `thinkingBudget` and `thinkingLevel: LOW`
   are rejected (400); `thinkingLevel: MINIMAL` works (1.1 s, 0 thought tokens).
-- **Decision:** `GEMMA_THINKING=minimal` by default; on a 400 mentioning
+- **Decision:** `MODEL_THINKING=minimal` by default (old name
+  `GEMMA_THINKING` still read); on a 400 mentioning
   thinking we retry without the knob and remember that.
 - **Why:** 2–3× faster with no accuracy loss on the 5 samples.
 
@@ -76,7 +77,7 @@ decision, why.
 - **Decision:** a geometry-only labeller (`src/lib/ai/mock.ts`) so the loop can
   be built and tested without credentials. Health reports `mock`; the level
   says so in its story.
-- **Why:** no Gemini key / Ollama on the build machine yet. Never use for demos.
+- **Why:** no Gemini key / Ollama on the build machine yet. Never use in production.
 
 ### D8 — Synthesized sound effects
 - **Decision:** Web Audio oscillators/noise (`src/game/sfx.ts`) instead of

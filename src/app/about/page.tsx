@@ -4,14 +4,14 @@ export const metadata = { title: 'How INKPLAY works' };
 
 const PIPELINE = [
   { where: 'your browser', what: 'OpenCV.js finds the paper, flattens it, cleans the ink and numbers every mark.', tag: 'web worker' },
-  { where: 'Gemma 4', what: 'Reads the clean drawing + the numbered copy. Labels each mark, turns margin words into rules, names the level.', tag: 'cloud or laptop' },
+  { where: 'the AI', what: 'Reads the clean drawing + the numbered copy. Labels each mark, turns margin words into rules, names the level.', tag: 'cloud or local' },
   { where: 'the server', what: 'Validates the JSON, clamps every number, then a fixer makes sure the level has a player, a goal and a path.', tag: 'zod + BFS' },
   { where: 'Phaser', what: 'Your drawing becomes the world. Bodies sit on your ink; your enemies and coins are cut out of the page and come alive.', tag: 'arcade physics' },
-  { where: 'Gemma 4, again', what: 'Watches your stats and writes a two-line review. Canned lines step in if the model is busy.', tag: 'the critic' },
+  { where: 'the AI, again', what: 'Watches your stats and writes a two-line review. Canned lines step in if the model is busy.', tag: 'the critic' },
 ] as const;
 
 const ARENA = [
-  { where: 'Gemma 4, the map maker', what: 'Lays out platforms, hazards, spawns, crates and monsters from a theme, from your drawing, or on its own. Your options (bots, pickups, weapons, hazards) go in as constraints.', tag: 'arena designer' },
+  { where: 'the map maker', what: 'Lays out platforms, hazards, spawns, crates and monsters from a theme, from your drawing, or on its own. Your options (bots, pickups, weapons, hazards) go in as constraints.', tag: 'arena designer' },
   { where: 'the server', what: 'Clamps every number, pulls overlapping pieces apart, keeps hazards reachable and spawns off them. If the model is slow, a seeded procedural map steps in, so a room never waits.', tag: 'zod + cleanup' },
   { where: 'Supabase Realtime', what: 'One channel per room. Each player simulates themself and sends their state ten times a second; everyone else draws them 150 ms behind, smoothed. The player who gets hit decides the hit.', tag: 'broadcast + presence' },
   { where: 'the host', what: 'The earliest joiner still playing runs the monsters and the AI bots. If they leave, the next player takes over. A watchdog rebuilds a dead connection.', tag: 'no game server' },
@@ -24,7 +24,7 @@ const SURVIVAL = [
 ] as const;
 
 const HONEST = [
-  { q: 'Is it always right?', a: 'No. A hatched trampoline sometimes reads as spikes. The set-of-marks reveal shows exactly what Gemma thought, so you can redraw.' },
+  { q: 'Is it always right?', a: 'No. A hatched trampoline sometimes reads as spikes. The numbered reveal shows exactly what the AI thought, so you can redraw.' },
   { q: 'Can the model run code?', a: 'Never. It picks from a fixed list of rule types; anything else is dropped and every number is clamped.' },
   { q: 'How fast?', a: 'About 10–30 s in the cloud (median ≈ 13 s). Offline speed depends on the laptop.' },
   { q: 'Does it need an account or database?', a: 'No. The gallery and online arena rooms use Supabase when it is configured; draw, play and review never touch it. Without it, the arena plays between tabs of one browser.' },
@@ -38,7 +38,7 @@ export default function AboutPage() {
         How INKPLAY <span className="highlight">works</span>
       </h1>
       <p className="mt-4 max-w-2xl text-lg text-graphite">
-        OpenCV does the geometry. Gemma does the understanding. Your pen does everything else.
+        Computer vision does the geometry. An AI model does the understanding. Your pen does everything else.
       </p>
 
       <Timeline steps={PIPELINE} className="mt-14" />
@@ -55,15 +55,19 @@ export default function AboutPage() {
         And <span className="highlight">survival</span>
       </h2>
       <p className="mt-4 max-w-3xl text-lg text-graphite">
-        An endless runner on the same sketchbook page, playable with a keyboard or with taps and swipes on a phone. It needs no model and no
-        network, so it is the same game on the stage laptop in airplane mode.
+        An endless runner on the same sketchbook page, playable with a keyboard or with taps and swipes on a phone. It needs no AI and no
+        network, so it works anywhere, even in airplane mode.
       </p>
       <Timeline steps={SURVIVAL} className="mt-10" />
 
-      <h2 className="font-display mt-10 text-3xl font-extrabold tracking-tight sm:text-5xl">Why an open model</h2>
+      <h2 className="font-display mt-10 text-3xl font-extrabold tracking-tight sm:text-5xl">Open source</h2>
       <p className="mt-4 max-w-3xl text-lg text-graphite">
-        The same Gemma 4 family serves the public site through the Gemini API and runs on a laptop through Ollama with no internet at all. A
-        classroom, a hackathon stage or a train with no signal gets the same game, arena included. The weights are open, so is this code (MIT).
+        INKPLAY is MIT licensed. This site uses a hosted model; your own copy can use a local one through Ollama and run with no internet
+        at all, which makes it handy for a classroom or a train with no signal.{' '}
+        <a href="https://github.com/dhananjay-123/inkplay" className="link-scrawl text-ink">
+          Get the code
+        </a>
+        .
       </p>
 
       <h2 className="font-display mt-16 text-3xl font-extrabold tracking-tight sm:text-5xl">Honest answers</h2>
@@ -78,8 +82,8 @@ export default function AboutPage() {
 
       <h2 className="font-display mt-16 text-3xl font-extrabold tracking-tight sm:text-5xl">Credits</h2>
       <p className="mt-4 max-w-3xl text-lg text-graphite">
-        Gemma 4 by Google DeepMind · OpenCV.js · Phaser 3 · Next.js · Rough.js · Ollama · Supabase (Postgres, Storage, Realtime). Type: Bricolage Grotesque, Kalam, JetBrains
-        Mono. Built for Hacktoberfest Hack Day Gwalior × ABV-IIITM IEEE.
+        OpenCV.js · Phaser 3 · Next.js · Rough.js · Ollama · Supabase (Postgres, Storage, Realtime) · open-weight models. Type: Bricolage
+        Grotesque, Kalam, JetBrains Mono.
       </p>
 
       <Link href="/create" className="btn-game mt-12 px-6 py-3.5 text-lg">

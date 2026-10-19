@@ -7,9 +7,10 @@ const optionalString = z.preprocess(emptyToUndefined, z.string().optional());
 const EnvSchema = z.object({
   MODEL_PROVIDER: z.preprocess(emptyToUndefined, z.enum(['gemini', 'ollama', 'mock']).default('gemini')),
   GEMINI_API_KEY: optionalString,
-  GEMMA_CLOUD_MODEL: optionalString,
+  /** Exact model id for the Gemini API provider. */
+  CLOUD_MODEL: optionalString,
   /** minimal = fast (default); default = let the model think (slow, ~20s+). */
-  GEMMA_THINKING: z.preprocess(emptyToUndefined, z.enum(['minimal', 'default']).default('minimal')),
+  MODEL_THINKING: z.preprocess(emptyToUndefined, z.enum(['minimal', 'default']).default('minimal')),
   OLLAMA_URL: z.preprocess(emptyToUndefined, z.string().url().default('http://127.0.0.1:11434')),
   OLLAMA_MODEL: z.preprocess(emptyToUndefined, z.string().default('gemma4:e4b')),
   NEXT_PUBLIC_SUPABASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
@@ -21,7 +22,14 @@ export type Env = z.infer<typeof EnvSchema>;
 export type Provider = Env['MODEL_PROVIDER'];
 
 function load(): Env {
-  const parsed = EnvSchema.safeParse(process.env);
+  // GEMMA_CLOUD_MODEL / GEMMA_THINKING are the old names; still honoured so
+  // existing deployments keep working.
+  const raw = {
+    ...process.env,
+    CLOUD_MODEL: process.env.CLOUD_MODEL || process.env.GEMMA_CLOUD_MODEL,
+    MODEL_THINKING: process.env.MODEL_THINKING || process.env.GEMMA_THINKING,
+  };
+  const parsed = EnvSchema.safeParse(raw);
   if (!parsed.success) {
     // Fail loudly in logs but keep the app booting: a bad optional var
     // should never take the core loop down.
@@ -42,5 +50,5 @@ export const hasSupabase = Boolean(
 
 export function modelName(): string {
   if (provider === 'mock') return 'mock (no model)';
-  return provider === 'ollama' ? env.OLLAMA_MODEL : env.GEMMA_CLOUD_MODEL ?? '(GEMMA_CLOUD_MODEL not set)';
+  return provider === 'ollama' ? env.OLLAMA_MODEL : env.CLOUD_MODEL ?? '(CLOUD_MODEL not set)';
 }

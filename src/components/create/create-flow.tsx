@@ -28,7 +28,7 @@ type EditorSeed = { key: number; scene?: Scene; templateId: string | null; name:
 const COOLDOWN_MS = 5000;
 
 const LOADING_LINES = [
-  'Gemma is reading your masterpiece…',
+  'Reading your masterpiece…',
   'Squinting at your handwriting…',
   'Deciding if that’s a cactus or a very angry cucumber…',
   'Asking the zigzag what it wants to be…',
@@ -60,7 +60,7 @@ export function CreateFlow() {
     else setTimeout(warm, 1500);
   }, []);
 
-  // Once Gemma has answered, the play route is the only place left to go.
+  // Once the model has answered, the play route is the only place left to go.
   useEffect(() => {
     if (phase.kind === 'ready') router.prefetch(phase.result.id ? `/play/${phase.result.id}` : '/play');
   }, [phase, router]);
@@ -101,7 +101,7 @@ export function CreateFlow() {
       try {
         const vision = await processImage(source);
         if (vision.marks.length === 0) {
-          setPhase({ kind: 'error', retryable: false, message: 'Gemma sees a blank page. Try darker ink or better light.' });
+          setPhase({ kind: 'error', retryable: false, message: 'This page looks blank. Try darker ink or better light.' });
           return;
         }
         await parse(vision);
@@ -171,7 +171,7 @@ export function CreateFlow() {
             </>
           ) : (
             <>
-              Show Gemma your <span className="highlight">page.</span>
+              Show us your <span className="highlight">page.</span>
             </>
           )}
         </h1>
@@ -272,7 +272,7 @@ export function CreateFlow() {
             />
             <p className="label mt-3 text-graphite">
               {vision.marks.length} marks found · {drawing ? 'drawn here' : vision.paperDetected ? 'paper flattened' : 'no paper edge, fitted to 16:9'} · vision {vision.ms}ms
-              {phase.kind === 'ready' && ` · Gemma ${(phase.result.ms / 1000).toFixed(1)}s`}
+              {phase.kind === 'ready' && ` · read in ${(phase.result.ms / 1000).toFixed(1)}s`}
             </p>
           </div>
           <aside className="flex flex-col gap-5">
@@ -387,13 +387,13 @@ function ReadyPanel({ result, onPlay, onEdit, onReset }: { result: ParseResponse
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <p className="font-hand text-lg text-pop">Gemma named it</p>
+        <p className="font-hand text-lg text-pop">We named it</p>
         <h2 className="font-display text-4xl font-extrabold leading-none tracking-tight">{level.title}</h2>
         <p className="font-hand mt-2 text-xl leading-snug">{level.story}</p>
       </div>
       {level.rawRuleText.length > 0 && (
         <div>
-          <p className="font-hand text-lg text-pop">Gemma read these rules</p>
+          <p className="font-hand text-lg text-pop">Rules we read</p>
           <ul className="mt-2 space-y-1">
             {level.rawRuleText.map((t, i) => (
               <li key={i} className="font-hand text-xl">“{t}”</li>
@@ -431,7 +431,7 @@ function CheatSheet() {
     <div className="sketch tape mt-16 p-5 pt-7 sm:p-7">
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-xl font-extrabold">
-          Cheat sheet <span className="font-hand font-normal text-graphite">(optional, Gemma reads anything)</span>
+          Cheat sheet <span className="font-hand font-normal text-graphite">(optional, write anything)</span>
         </h2>
         <Link href="/guide" className="font-hand link-scrawl text-lg text-ink">
           full guide and every rule

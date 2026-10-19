@@ -38,7 +38,7 @@ export const SYMBOLS = [
   { Glyph: Goal, mark: 'G or ★', becomes: 'goal', note: 'flags and doors work too' },
   { Glyph: Coin, mark: '$', becomes: 'coin', note: 'the $ you drew is what vanishes' },
   { Glyph: Enemy, mark: 'E (+ arrow)', becomes: 'enemy', note: 'the arrow sets its direction' },
-  { Glyph: Doodle, mark: 'anything else', becomes: 'Gemma decides', note: 'cactus = hazard, cloud = platform, dog = enemy…' },
+  { Glyph: Doodle, mark: 'anything else', becomes: 'the AI decides', note: 'cactus = hazard, cloud = platform, dog = enemy…' },
   { Glyph: Words, mark: 'words', becomes: 'rules', note: 'write them anywhere on the page' },
 ] as const;
 

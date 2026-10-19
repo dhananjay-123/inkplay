@@ -26,7 +26,7 @@ const err = (status: number, code: string, message: string, retryAfterS?: number
   Response.json({ error: { code, message, retryAfterS } }, { status });
 
 /**
- * Gemma designs an arena from a theme (or nothing), or turns a drawing's
+ * The model designs an arena from a theme (or nothing), or turns a drawing's
  * marks into one. Never fails a valid request: if the model can't answer,
  * a seeded procedural map comes back instead, so a room always gets a map.
  */
@@ -80,13 +80,13 @@ export async function POST(req: Request) {
     console.warn(`[arena] model failed (${reason}); procedural fallback`);
     const map =
       input.mode === 'drawing'
-        ? arenaFromDrawing(input.marks, mockMarkLabels(input.marks), { title: 'Doodle Warzone', story: 'Gemma was busy, so we guessed what you drew.', rules: [] }, null, opts, seed, input.sampleId)
+        ? arenaFromDrawing(input.marks, mockMarkLabels(input.marks), { title: 'Doodle Warzone', story: 'The map maker was busy, so we guessed what you drew.', rules: [] }, null, opts, seed, input.sampleId)
         : proceduralArena(seed, opts);
     return Response.json({
       map,
       source: 'procedural',
       ms: Math.round(performance.now() - t0),
-      note: e instanceof AIError && e.code === 'rate_limited' ? 'Gemma is catching its breath, so the ruler drew this one.' : 'Gemma was out of the room, so the ruler drew this one.',
+      note: e instanceof AIError && e.code === 'rate_limited' ? 'The map maker is catching its breath, so the ruler drew this one.' : 'The map maker was out of the room, so the ruler drew this one.',
     } satisfies ArenaMapResponse);
   }
 }

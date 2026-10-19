@@ -8,7 +8,7 @@ import type { ArenaBus } from './arena-events';
 import { play } from './sfx';
 
 /**
- * Mini Militia-style arena. Netcode (hackathon-grade, see docs/DECISIONS.md):
+ * Mini Militia-style arena. Netcode (simple client-authoritative, see docs/DECISIONS.md):
  * - every client simulates its own player and broadcasts state at 10 Hz;
  *   remote players are drawn ~120 ms in the past, interpolated between snapshots
  * - shots ride along in the state message; every client simulates every

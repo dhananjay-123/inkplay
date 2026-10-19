@@ -9,7 +9,7 @@ export const ParseRequestSchema = z.object({
   somImage: imageString,
   cleanImage: imageString,
   marks: z.array(MarkSchema).min(1).max(MAX_MARKS),
-  /** The template name the player chose; replaces the title Gemma invents. */
+  /** The template name the player chose; replaces the title the model invents. */
   title: z.string().trim().max(80).optional(),
 });
 export type ParseRequest = z.infer<typeof ParseRequestSchema>;

@@ -43,7 +43,7 @@ async function main() {
     .filter((f) => !only || f.startsWith(only));
 
   const jsonSchema = z.toJSONSchema(LevelSchema) as Record<string, unknown>;
-  console.log(`provider=${provider} model=${provider === 'ollama' ? process.env.OLLAMA_MODEL ?? 'gemma4:e4b' : process.env.GEMMA_CLOUD_MODEL ?? '(unset)'}\n`);
+  console.log(`provider=${provider} model=${provider === 'ollama' ? process.env.OLLAMA_MODEL ?? 'gemma4:e4b' : process.env.CLOUD_MODEL ?? process.env.GEMMA_CLOUD_MODEL ?? '(unset)'}\n`);
 
   const variants: { name: string; nativeSystemInstruction: boolean; jsonMode: boolean }[] = [
     { name: process.argv.includes('--native') ? 'native-system' : 'inline-system', nativeSystemInstruction: process.argv.includes('--native'), jsonMode: false },

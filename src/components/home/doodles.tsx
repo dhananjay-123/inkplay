@@ -116,7 +116,7 @@ export function StepIcon({ step }: { step: 'draw' | 'snap' | 'play' }) {
   );
 }
 
-/** Gemma's handwritten margin note with a drawn arrow. */
+/** A handwritten margin note with a drawn arrow. */
 export function MarginNote({ children, className = '', arrow = 'left' }: { children: React.ReactNode; className?: string; arrow?: 'left' | 'down' | 'right' }) {
   const d =
     arrow === 'left'
