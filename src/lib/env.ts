@@ -30,13 +30,14 @@ function load(): Env {
     MODEL_THINKING: process.env.MODEL_THINKING || process.env.GEMMA_THINKING,
   };
   const parsed = EnvSchema.safeParse(raw);
-  if (!parsed.success) {
-    // Fail loudly in logs but keep the app booting: a bad optional var
-    // should never take the core loop down.
-    console.error('[env] invalid environment:', z.prettifyError(parsed.error));
-    return EnvSchema.parse({});
-  }
-  return parsed.data;
+  if (parsed.success) return parsed.data;
+  // Fail loudly in logs but keep the app booting: a bad optional var should
+  // never take the core loop down. Drop only the invalid keys, so a typo in
+  // OLLAMA_URL doesn't also throw away GEMINI_API_KEY and Supabase.
+  console.error('[env] invalid environment:', z.prettifyError(parsed.error));
+  const bad = new Set(parsed.error.issues.map((i) => String(i.path[0])));
+  const kept = Object.fromEntries(Object.entries(raw).filter(([k]) => !bad.has(k)));
+  return EnvSchema.parse(kept);
 }
 
 export const env = load();
