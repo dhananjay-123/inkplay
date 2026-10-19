@@ -1,0 +1,16 @@
+name: Idea or feature request
+description: A new doodle, rule, mode or anything else you'd like to see.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What would you like INKPLAY to do? A sketch or example helps.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What would it make better or more fun?
