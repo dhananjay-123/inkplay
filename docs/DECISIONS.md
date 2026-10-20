@@ -331,3 +331,11 @@ decision, why.
   focus the scene disables its keyboard and global capture (`typing` bus
   event), and resets held keys so the player doesn't keep running. A new
   map builds a new game, which checks for a focused text box at start.
+- **Emotes and quick comments.** Ten emotes (keys 1 to 9 and 0, or the
+  chat panel) and ten one-tap comments. An emote is just a chat line made
+  only of emoji, so it needs no new message type, rides the same cleaning
+  and rate limits, and works offline (system emoji font, no assets). Lines
+  that are only emoji pop up big over the player instead of a speech
+  bubble. The cleaner keeps the zero-width joiner only between two emoji,
+  so sequences like a heart on fire survive while hidden joiners in text
+  are still stripped.

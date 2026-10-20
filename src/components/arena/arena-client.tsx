@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArenaBus, isTyping, type ArenaEvents, type ArenaHud } from '@/game/arena-events';
 import { ARENA_COLORS } from '@/game/art';
 import { play as sfx, setMuted } from '@/game/sfx';
-import { CHAT_MAX, QUICK_CHAT, chatLimiter, cleanChat } from '@/lib/arena/chat';
+import { CHAT_MAX, EMOTES, QUICK_CHAT, chatLimiter, cleanChat, isEmoteLine } from '@/lib/arena/chat';
 import { connectRoom, type NetMsg, type PlayerMeta, type Transport } from '@/lib/arena/net';
 import { proceduralArena } from '@/lib/arena/procedural';
 import { DEFAULT_OPTIONS, MAX_BOTS, parseWireMap, type ArenaMap, type ArenaMapResponse, type MapOptions } from '@/lib/arena/schema';
@@ -193,7 +193,7 @@ export function ArenaClient() {
         </div>
       </form>
       <p className="font-hand mt-6 text-lg text-graphite">
-        A/D to move, W or Space to jump and jetpack, G or right-click for a grenade. Walk over crates for rifles, flamethrowers, chainsaws, rockets, shields and boosts. Autofire aims and shoots at the nearest enemy you can see; turn it off (F) to aim with the mouse and click to fire. R reloads. Enter or T opens the room chat.
+        A/D to move, W or Space to jump and jetpack, G or right-click for a grenade. Walk over crates for rifles, flamethrowers, chainsaws, rockets, shields and boosts. Autofire aims and shoots at the nearest enemy you can see; turn it off (F) to aim with the mouse and click to fire. R reloads. Enter or T opens the room chat, and keys 1 to 0 send quick emotes.
       </p>
     </div>
   );
@@ -624,7 +624,7 @@ function Room({ net, me, setMe, room, onLeave, immersive, setImmersive }: RoomPr
         <p className="font-hand min-w-0 flex-1 truncate text-base text-graphite" title={current?.map.story}>
           {current?.note ?? current?.map.story ?? 'Waiting for a map.'}
         </p>
-        <p className="font-hand hidden shrink-0 text-base text-graphite lg:block">A/D move · W/Space jump + jetpack · G grenade · autofire aims for you · F to aim yourself · R reload · Enter chat</p>
+        <p className="font-hand hidden shrink-0 text-base text-graphite lg:block">A/D move · W/Space jump + jetpack · G grenade · autofire aims for you · F to aim yourself · R reload · Enter chat · 1-0 emotes</p>
       </div>
       {current && !showMaker && <ArenaTouch bus={bus} />}
       {!portraitOk && (
@@ -663,6 +663,19 @@ function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAl
   const [slow, setSlow] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLOListElement>(null);
+  // The room re-renders many times a second (HUD); a ref keeps the key listener stable.
+  const onSendRef = useRef(onSend);
+  useEffect(() => {
+    onSendRef.current = onSend;
+  }, [onSend]);
+
+  const flashSlow = useCallback(() => {
+    setSlow(true);
+    setTimeout(() => setSlow(false), 1500);
+  }, []);
+  const emote = useCallback((e: string) => {
+    if (!onSendRef.current(e)) flashSlow();
+  }, [flashSlow]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -670,6 +683,14 @@ function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAl
     // Open: Esc closes it, even when the box itself doesn't have focus.
     // Lives here, so it's off whenever the chat isn't on screen (map maker open).
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target instanceof Element ? e.target : null;
+      // 1-9 and 0 send an emote, whenever you're not typing somewhere.
+      const slot = '1234567890'.indexOf(e.key);
+      if (slot >= 0 && slot < EMOTES.length && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !target?.closest('input, textarea, select')) {
+        e.preventDefault();
+        emote(EMOTES[slot].e);
+        return;
+      }
       if (open) {
         if (e.key !== 'Escape') return;
         setOpen(false);
@@ -677,13 +698,13 @@ function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAl
         return;
       }
       if ((e.key !== 'Enter' && e.key.toLowerCase() !== 't') || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-      if ((e.target as HTMLElement | null)?.closest('input, textarea, select, button, a')) return;
+      if (target?.closest('input, textarea, select, button, a')) return;
       e.preventDefault();
       setOpen(true);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, setOpen]);
+  }, [open, setOpen, emote]);
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [lines, open]);
@@ -693,11 +714,7 @@ function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAl
     inputRef.current?.blur();
   };
   const send = (text: string, keepOpen = false) => {
-    if (!onSend(text)) {
-      setSlow(true);
-      setTimeout(() => setSlow(false), 1500);
-      return;
-    }
+    if (!onSend(text)) return flashSlow();
     setDraft('');
     if (!keepOpen) close();
   };
@@ -722,7 +739,7 @@ function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAl
               <b className="font-bold">
                 <bdi>{l.name}</bdi>
               </b>{' '}
-              <bdi>{l.text}</bdi>
+              <bdi className={isEmoteLine(l.text) ? 'text-2xl leading-none' : ''}>{l.text}</bdi>
             </span>
             {open && !l.mine && (
               <button
@@ -741,9 +758,29 @@ function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAl
 
       {open ? (
         <div className="grid gap-1 rounded-[var(--wobble)] border-2 border-ink bg-card/95 p-2">
-          <div className="flex flex-wrap gap-1">
+          {/* Emotes pop over your head. With a message started, they go into the message instead. */}
+          {/* Phones: one swipeable line each, so the panel stays clear of the thumb controls. */}
+          <div className="flex flex-wrap gap-0.5 pointer-coarse:flex-nowrap pointer-coarse:overflow-x-auto" role="group" aria-label="Emotes">
+            {EMOTES.map(({ e, name }, i) => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => {
+                  if (!draft.trim()) return emote(e);
+                  setDraft((d) => (d + e).slice(0, CHAT_MAX));
+                  inputRef.current?.focus();
+                }}
+                aria-label={name}
+                title={`${name} (key ${(i + 1) % 10})`}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--wobble-btn)] text-xl transition-transform hover:-translate-y-0.5 hover:bg-paper active:scale-90 pointer-coarse:h-10 pointer-coarse:w-10"
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1 pointer-coarse:flex-nowrap pointer-coarse:overflow-x-auto pointer-coarse:pb-1" role="group" aria-label="Quick comments">
             {QUICK_CHAT.map((q) => (
-              <button key={q} type="button" onClick={() => send(q, true)} className="btn-ghost btn-sm px-2 py-0 text-sm">
+              <button key={q} type="button" onClick={() => send(q, true)} className="btn-ghost btn-sm shrink-0 whitespace-nowrap px-2 py-0 text-sm">
                 {q}
               </button>
             ))}
@@ -782,9 +819,12 @@ function RoomChat({ lines, open, setOpen, onSend, onMute, mutedCount, onUnmuteAl
           )}
         </div>
       ) : (
-        <button type="button" onClick={() => setOpen(true)} className="label w-fit rounded-[var(--wobble-btn)] border-2 border-ink bg-card/90 px-2 py-0.5 text-[0.62rem] pointer-coarse:px-4 pointer-coarse:py-2" title="Enter or T">
-          chat<span className="pointer-coarse:hidden"> · enter</span>
-        </button>
+        <span className="flex items-center gap-2">
+          <button type="button" onClick={() => setOpen(true)} className="label w-fit rounded-[var(--wobble-btn)] border-2 border-ink bg-card/90 px-2 py-0.5 text-[0.62rem] pointer-coarse:px-4 pointer-coarse:py-2" title="Enter or T to chat, 1-9 and 0 for emotes">
+            chat<span className="pointer-coarse:hidden"> · enter · 1-0 emotes</span>
+          </button>
+          {slow && <span className="font-hand text-sm text-hazard">slow down a little</span>}
+        </span>
       )}
     </div>
   );

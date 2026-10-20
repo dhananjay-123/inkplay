@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { isEmoteLine } from '@/lib/arena/chat';
 import type { BotState, NetMsg, NpcShot, NpcState, PlayerMeta, Shot, Transport } from '@/lib/arena/net';
 import { ARENA_WORLD, MAX_BOTS, arenaTuning, type ArenaMap, type EnemyKind, type PickupKind } from '@/lib/arena/schema';
 import { BUFFS, BUFF_IDS, CHAINSAW_SECONDS, MAX_GRENADES, SHIELD_HP, START_GRENADES, WEAPONS, WEAPON_IDS, type BuffId, type WeaponId } from '@/lib/arena/weapons';
@@ -430,6 +431,16 @@ export class ArenaScene extends Phaser.Scene {
     // Only over someone we can see: no text objects for ids that aren't in the arena.
     if (id !== this.cfg.me.id && !this.remotes.has(id)) return;
     this.bubbles.get(id)?.text.destroy();
+    if (isEmoteLine(line)) {
+      // Emotes: big, no bubble, with a little pop (none under reduced motion).
+      const text = this.add.text(0, 0, line, { fontSize: '46px', padding: { x: 4, y: 6 } }).setOrigin(0.5, 1).setDepth(23);
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        text.setScale(0.3);
+        this.tweens.add({ targets: text, scale: 1, duration: 260, ease: 'Back.out' });
+      }
+      this.bubbles.set(id, { text, until: performance.now() + 2200 });
+      return;
+    }
     const text = this.add
       .text(0, 0, line, {
         fontFamily: this.cfg.handFont,
