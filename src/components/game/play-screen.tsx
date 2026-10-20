@@ -106,7 +106,7 @@ export function PlayScreen({ data }: Props) {
           <button type="button" onClick={toggleMuted} className="btn-ghost btn-sm px-3 py-1" aria-pressed={!muted}>
             {muted ? 'Sound off' : 'Sound on'}
           </button>
-          <button type="button" onClick={() => bus.emit('restart')} className="btn-ghost btn-sm px-3 py-1">
+          <button type="button" onClick={() => (end ? again() : bus.emit('restart'))} className="btn-ghost btn-sm px-3 py-1">
             Restart
           </button>
           {id && (

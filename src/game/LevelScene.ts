@@ -53,6 +53,8 @@ export class LevelScene extends Phaser.Scene {
   private airJumps = 0;
   private canDoubleJump = false;
   private shield = false;
+  /** After a shield save: a moment to get clear of whatever was hit. */
+  private safeUntil = 0;
   private effect: Effect = null;
   private deaths = 0;
   private coins = 0;
@@ -88,6 +90,7 @@ export class LevelScene extends Phaser.Scene {
     this.airJumps = 0;
     this.canDoubleJump = false;
     this.shield = false;
+    this.safeUntil = 0;
     this.effect = null;
     this.deaths = 0;
     this.coins = 0;
@@ -582,9 +585,12 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private die(cause: string) {
-    if (this.dying || this.ended) return;
+    if (this.dying || this.ended || this.time.now < this.safeUntil) return;
     if (this.shield) {
       this.shield = false;
+      // Still touching the spikes/enemy next frame would kill straight through the shield.
+      this.safeUntil = this.time.now + 900;
+      this.tweens.add({ targets: this.player, alpha: 0.4, duration: 110, yoyo: true, repeat: 3 });
       this.player.clearTint();
       this.player.body.setVelocityY((this.t.inverted ? 1 : -1) * this.t.jumpVelocity * 0.7);
       this.floatText(this.player.x, this.player.y - 70, 'shield saved you!', PALETTE.ink);
@@ -617,6 +623,8 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private restartRun() {
+    // After the end card is up, "play again" belongs to the page (it remounts the game).
+    if (this.ended) return;
     this.cfg.bus.emit('live', { deaths: 0, coins: 0, timeSeconds: 0, timeLeft: this.timeLimit, effect: null });
     this.scene.restart(this.cfg);
   }
