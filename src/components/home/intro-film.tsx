@@ -310,7 +310,8 @@ export function IntroFilm() {
 
           {/* particle pools */}
           {Array.from({ length: 12 }, (_, i) => (
-            <circle key={`p${i}`} data-puff r="0" fill="var(--graphite)" opacity="0" />
+            // cx/cy start as numbers: GSAP reads the current value, and a missing attribute logs an SVG error.
+            <circle key={`p${i}`} data-puff cx="0" cy="0" r="0" fill="var(--graphite)" opacity="0" />
           ))}
           {Array.from({ length: 30 }, (_, i) => (
             <rect key={`b${i}`} data-bit x="-5" y="-5" width="10" height="10" rx="2" opacity="0" />
