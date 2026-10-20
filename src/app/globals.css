@@ -257,10 +257,13 @@ body {
 /* ------------------------------------------------------------------
    Scroll reveals (see components/home/reveal.tsx)
 ------------------------------------------------------------------- */
-.reveal {
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+/* Only hide when JS can bring it back (no JS: the page is simply all there). */
+@media (scripting: enabled) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
 }
 .reveal[data-in] {
   opacity: 1;
