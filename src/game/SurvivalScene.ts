@@ -129,6 +129,9 @@ export class SurvivalScene extends Phaser.Scene {
   }
 
   create() {
+    // scene.restart() rebuilds physics and tweens but keeps the clock's paused flag:
+    // R pressed while paused would start a run whose timers never fire.
+    this.time.paused = false;
     this.makeTextures();
     this.physics.world.gravity.y = RUN.gravity;
     this.physics.world.OVERLAP_BIAS = 12;
