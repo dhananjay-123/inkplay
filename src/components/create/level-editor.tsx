@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   H,
   INK,
+  MAX_ITEMS,
+  MAX_STROKE_NUMS,
   STROKE,
   W,
   bboxOf,
@@ -160,7 +162,15 @@ export function LevelEditor({ initial, templateId, templateName, onPlay, onExit,
 
   const idAt = (el: Element | null) => el?.closest('[data-id]')?.getAttribute('data-id') ?? null;
 
+  /** The page holds MAX_ITEMS things; past that a saved draft or template wouldn't load. */
+  const full = () => {
+    if (itemsRef.current.length < MAX_ITEMS) return false;
+    setNote('The page is full. Erase something, or join lines into longer strokes.');
+    return true;
+  };
+
   const add = (it: Item) => {
+    if (full()) return;
     commit([...itemsRef.current, it]);
     setSelected(it.id);
     setTool('move');
@@ -238,7 +248,7 @@ export function LevelEditor({ initial, templateId, templateName, onPlay, onExit,
       else {
         const lx = d.points[d.points.length - 2];
         const ly = d.points[d.points.length - 1];
-        if (Math.hypot(p.x - lx, p.y - ly) < 3) return;
+        if (Math.hypot(p.x - lx, p.y - ly) < 3 || d.points.length >= MAX_STROKE_NUMS) return;
         d.points = [...d.points, Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10];
       }
       setLive(d.points);
@@ -268,7 +278,7 @@ export function LevelEditor({ initial, templateId, templateName, onPlay, onExit,
     if (d.kind === 'draw') {
       setLive(null);
       // A single tap with the line tool is nothing; with the pen it's a dot.
-      if (d.points.length >= 4 || tool === 'pen') commit([...itemsRef.current, { kind: 'stroke', id: newId(), points: d.points }]);
+      if ((d.points.length >= 4 || tool === 'pen') && !full()) commit([...itemsRef.current, { kind: 'stroke', id: newId(), points: d.points }]);
     } else if ((d.kind === 'move' || d.kind === 'resize') && d.before !== itemsRef.current) {
       commit(itemsRef.current, d.before);
     }

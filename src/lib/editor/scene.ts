@@ -14,14 +14,18 @@ export const PAPER = '#fbf8f1';
 export const STROKE = 5;
 export const TEXT_SIZE = 44;
 
+/** Limits the editor enforces as you draw, so a saved scene always loads back. */
+export const MAX_ITEMS = 500;
+export const MAX_STROKE_NUMS = 20000;
+
 export const num = z.number().finite();
 const ItemSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('stroke'), id: z.string(), points: z.array(num).min(2).max(20000) }),
+  z.object({ kind: z.literal('stroke'), id: z.string(), points: z.array(num).min(2).max(MAX_STROKE_NUMS) }),
   z.object({ kind: z.literal('sticker'), id: z.string(), ref: z.string(), x: num, y: num, scale: num }),
   z.object({ kind: z.literal('text'), id: z.string(), text: z.string().max(80), x: num, y: num, scale: num }),
   z.object({ kind: z.literal('image'), id: z.string(), src: z.string().startsWith('data:image/'), x: num, y: num, w: num, h: num, scale: num }),
 ]);
-export const SceneSchema = z.array(ItemSchema).max(500);
+export const SceneSchema = z.array(ItemSchema).max(MAX_ITEMS);
 
 export type Item = z.infer<typeof ItemSchema>;
 export type Scene = Item[];

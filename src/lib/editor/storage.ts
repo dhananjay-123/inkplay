@@ -14,7 +14,7 @@ const TEMPLATES_KEY = 'inkplay.templates.v1';
 const DRAFT_KEY = 'inkplay.draft.v1';
 const CHANGED = 'inkplay:templates';
 
-const TemplatesSchema = z.array(z.object({ id: z.string(), name: z.string(), savedAt: num, scene: SceneSchema }));
+const TemplateSchema = z.object({ id: z.string(), name: z.string(), savedAt: num, scene: SceneSchema });
 
 function read(key: string): string | null {
   try {
@@ -32,20 +32,30 @@ function write(key: string, value: string): boolean {
   }
 }
 
-let cache: { raw: string | null; list: Template[] } = { raw: null, list: [] };
-function savedTemplates(): Template[] {
+// Each template is checked on its own: one bad entry hides only itself, and
+// is written back untouched (`kept`) so saving another template never wipes it.
+let cache: { raw: string | null; list: Template[]; kept: unknown[] } = { raw: null, list: [], kept: [] };
+function parseAll(): typeof cache {
   const raw = read(TEMPLATES_KEY);
-  if (raw === cache.raw) return cache.list;
-  let list: Template[] = [];
+  if (raw === cache.raw) return cache;
+  const list: Template[] = [];
+  const kept: unknown[] = [];
   try {
-    const parsed = TemplatesSchema.safeParse(JSON.parse(raw ?? '[]'));
-    if (parsed.success) list = parsed.data;
+    const all: unknown = JSON.parse(raw ?? '[]');
+    if (Array.isArray(all)) {
+      for (const entry of all) {
+        const t = TemplateSchema.safeParse(entry);
+        if (t.success) list.push(t.data);
+        else kept.push(entry);
+      }
+    }
   } catch {
-    /* corrupt entry: treat as empty */
+    /* corrupt JSON: nothing readable to keep */
   }
-  cache = { raw, list };
-  return list;
+  cache = { raw, list, kept };
+  return cache;
 }
+const savedTemplates = (): Template[] => parseAll().list;
 
 const EMPTY: Template[] = [];
 function subscribe(cb: () => void) {
@@ -64,14 +74,15 @@ export function useTemplates(): Template[] {
 
 /** Saves (or overwrites, same id) a template. False if the browser refused. */
 export function saveTemplate(t: Omit<Template, 'savedAt'>): boolean {
-  const list = [{ ...t, savedAt: Date.now() }, ...savedTemplates().filter((x) => x.id !== t.id)];
-  const ok = write(TEMPLATES_KEY, JSON.stringify(list));
+  const { list, kept } = parseAll();
+  const ok = write(TEMPLATES_KEY, JSON.stringify([{ ...t, savedAt: Date.now() }, ...list.filter((x) => x.id !== t.id), ...kept]));
   if (ok) window.dispatchEvent(new Event(CHANGED));
   return ok;
 }
 
 export function deleteTemplate(id: string): void {
-  if (write(TEMPLATES_KEY, JSON.stringify(savedTemplates().filter((x) => x.id !== id)))) window.dispatchEvent(new Event(CHANGED));
+  const { list, kept } = parseAll();
+  if (write(TEMPLATES_KEY, JSON.stringify([...list.filter((x) => x.id !== id), ...kept]))) window.dispatchEvent(new Event(CHANGED));
 }
 
 export function loadDraft(): Scene | null {
